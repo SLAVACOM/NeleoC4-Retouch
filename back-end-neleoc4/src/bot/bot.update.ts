@@ -613,7 +613,6 @@ export class BotUpdate {
       BigInt(ctx.from.id),
     );
     if (!user) return;
-    ctx.reply(ctx.from.language_code ? ctx.from.language_code : '-');
     ctx.reply(
       await this.getLocalizedSupportMessage(user.language, 'choose_language'),
       Markup.inlineKeyboard([
