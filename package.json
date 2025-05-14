@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "@reach/dialog": "^0.18.0",
+    "prisma": "^6.6.0"
+  }
+}

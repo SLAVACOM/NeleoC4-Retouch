@@ -1,0 +1,55 @@
+  services:
+    frontend:
+      build:
+        context: .
+        dockerfile: front-end-neleoc4/Dockerfile
+      env_file:
+        - .env.backend
+      ports:
+        - '3000:3000'
+      depends_on:
+        - backend
+      networks:
+        - app-network
+
+    backend:
+      build:
+        context: .
+        dockerfile: back-end-neleoc4/Dockerfile
+      ports:
+        - '5000:5000'
+      env_file:
+        - .env.backend
+      
+      environment:
+        - LOCALES_PATH=/app/src/messages/data
+      volumes:
+        - ./locales:/app/src/messages/data
+      
+      depends_on:
+        - db
+      restart: always
+      
+      networks:
+        - app-network
+
+    db:
+      image: postgres:13
+      restart: always
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: password
+        POSTGRES_DB: NeleoC4
+      volumes:
+        - postgres-data:/var/lib/postgresql/data
+      networks:
+        - app-network
+      ports:
+        - '5432:5432'
+
+  networks:
+    app-network:
+      driver: bridge
+
+  volumes:
+    postgres-data:
