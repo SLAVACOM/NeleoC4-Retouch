@@ -1,0 +1,86 @@
+{
+  "welcome": "Welcome, ${username}!",
+  "welcome_back": "Welcome back!",
+
+  "watermark_upload": "Please upload a watermark.",
+  "watermark_upload_failed": "Failed to upload the watermark.",
+  "watermark_upload_success": "Watermark uploaded successfully.",
+
+  "error_no_user": "❌ Error: could not get user ID",
+  "error_promocode_already_used": "❌ Error: promo code already used",
+  "error_promocode_not_found": "❌ Error: promo code not found",
+
+  "unknown_command": "❌ Unknown command",
+
+  "command_start": "Start the bot!",
+  "command_support": "Support",
+  "command_generation": "Number of generations",
+  "command_promo": "Enter promo code",
+  "command_language": "Change language",
+  "command_settings": "Change retouch settings",
+  "command_buy": "Buy generations",
+
+  "send_watermark": "Send a watermark a recent photo",
+
+  "photo_sent": "Photo sent for processing.",
+  "photo_processed": "Photo successfully processed.",
+
+  "no_info_support": "📭 There is currently no support information",
+  "support_message": "If you have any questions, please contact our support service: @${username}",
+
+  "user_generations": "You have:\n${freeGenerations} free generations\n${paidGenerations} paid generations",
+  "no_generations": "You have no available generations.",
+
+  "u_need_add_balance": "To select vials and a watermark, you need to top up your balance",
+
+  "u_need_add_balance_setting": "To select a retouch setting, you need to top up your balance",
+
+  "choose_mode": "Choose a processing mode:",
+  "mode_light": "Light",
+  "mode_medium": "Medium",
+  "mode_hard": "Hard",
+  "mode_changed": "Processing mode changed to ${mode}.",
+
+  "choose_vials": "Choose vials:",
+
+  "continue_without_vials": "Continue without vials",
+  "finish": "✅ Finish selection",
+  "max_vials_selected": "You can select no more than two vials.",
+
+  "watermark_question": "Do you want to add a watermark?",
+
+  "yes": "✅ Yes",
+  "no": "❌ No",
+
+  "my_watermark": "Upload your own watermark",
+  "my_watermark_message": "Sent your watermark reply to the photo",
+
+  "promo_code": "Enter your promo code:",
+  "promo_code_not_found": "❌ Promo code not found",
+  "promo_code_used": "❌ Promo code already used",
+
+  "promo_code_activated_generation": "✅ Promo code successfully activated!\nYou received ${count} generations",
+  "promo_code_activated_discount": "✅ Promo code successfully activated!\nYou received a ${discount}% discount on the purchase of generations",
+  "promo_code_activated_discount_sum": "✅ Promo code successfully activated!\nYou received a ${discount} rub. discount on the purchase of generations",
+
+  "payment_success": "✅ Payment successful!\nYou received ${count} generations, you can use them in the bot!\nYou have a total of ${total} generations",
+
+  "payment_text": "You selected ${count} generations for ${amountWithoutDiscount}₽.\n\n🔹 Promo code applied: ${promoCode}\n\n${amount} 💳 Click the button below to pay.",
+
+  "pay_button": "💰 Pay",
+  "cancel_button": "❌ Cancel",
+  "back_button": "⬅️ Back",
+
+  "RU": "🇷🇺 Russian",
+  "EN": "🇬🇧 English",
+  "language_changed": "Language changed to English",
+
+  "choose_language": "Choose a language:",
+
+  "thanks_for_using": "Thank you for using our service!",
+
+  "all_products": "All available products:",
+  "all_products_with_discount": "All products with a discount:",
+  "product_price": "${productName}: ${price}₽",
+  "product_price_with_discount": "${productName}: ~${oldPrice}₽~ ${newPrice}₽"
+}

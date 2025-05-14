@@ -1,0 +1,247 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "windows"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workers {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  login    String @unique
+  password String
+
+  roles       RoleEnum[] @default([])
+  name        String?
+  description String?
+  photoUrl    String?
+
+  isDelete Boolean @default(false) @map("is_delete")
+}
+
+model User {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lastActiveAt DateTime? @default(now()) @map("last_active_at")
+
+  telegramId       BigInt  @unique @map("Telegram_ID")
+  telegramUsername String? @unique @map("Telegram_username")
+  telegramFullName String? @map("Telegram_full_name")
+
+  paymentGenerationCount Int @default(0) @map("payment_generation_count")
+  freeGenerationCount    Int @default(2) @map("free_generation_count")
+
+  generations Generation[]
+  payments    Payment[]
+
+  discountId Int? @map("have_discount")
+
+  usersUsePromocodes UsersUsePromocodes[]
+  usersSettings      UsersSettings[]
+
+  selectedVials UserSelectedVials[]
+  language      LanguageEnum        @default(RU) @map("language")
+}
+
+model Product {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name            String  @unique
+  description     String?
+  price           Float
+  generationCount Int
+
+  IsDelete Boolean   @default(false)
+  payments Payment[]
+}
+
+model ApiSett {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique
+  data String
+}
+
+model Generation {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId    Int
+  type      GenerationType
+  retouchId String         @default("") // ID ретуши
+
+  description String? // Описание генерации
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId    Int
+  productId Int?
+
+  paymentInfo     String?
+  generationCount Int
+
+  amount    Float
+  promoCode String?
+
+  user    User     @relation(fields: [userId], references: [id])
+  Product Product? @relation(fields: [productId], references: [id])
+}
+
+model PromoCode {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  code        String  @unique
+  description String?
+
+  discountSum        Int @default(0) @map("discount_sum") // Сумма скидки
+  discountPercentage Int @default(0) @map("discount_percentage") // Процент скидки
+
+  generationCount Int @default(0) @map("generation_count") // Количество генераций, добавляемых при использовании
+
+  isDiscount      Boolean @default(false) // Скидка
+  isAddGeneration Boolean @default(false) // Добавление генераций
+  isMultiUse      Boolean @default(false) // Многоразовый промокод
+  usesLeft        Int     @default(1) // Осталось использований
+
+  expirationDate     DateTime             @default("2050-01-01T00:00:00Z") // Дата истечения срока действия
+  isActive           Boolean              @default(true) // Активен ли промокод
+  UsersUsePromocodes UsersUsePromocodes[]
+}
+
+model UsersUsePromocodes {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId      Int       @map("user_id")
+  promoCodeId Int       @map("promo_code")
+  User        User      @relation(fields: [userId], references: [id])
+  PromoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+}
+
+model Retouch {
+  id Int @id @default(autoincrement())
+
+  retouchApiId String @unique
+
+  settingsId Int     @map("settings_id")
+  isDelete   Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model UsersSettings {
+  id Int @id @unique @default(autoincrement())
+
+  userId     Int  @unique @map("user_id")
+  settingsId Int  @map("setting_id")
+  user       User @relation(fields: [userId], references: [id])
+}
+
+model BaseSettings {
+  id         Int      @id @default(autoincrement())
+  name       String
+  settingsId Int      @unique @map("setting_id")
+  settings   Settings @relation(fields: [settingsId], references: [id])
+}
+
+model Discount {
+  id                 Int @id @default(autoincrement())
+  discountPercentage Int @default(0) @map("discount_percentage") // Сумма скидки
+}
+
+model Settings {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  settings     String
+  BaseSettings BaseSettings[]
+}
+
+model SupportInfo {
+  id   Int    @id @default(autoincrement())
+  info String
+}
+
+model VialsCollection {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name        String  @unique
+  description String?
+  Vials       Vials[]
+}
+
+model UserSelectedVials {
+  id Int @default(autoincrement())
+
+  userId Int
+  vialId Int
+
+  User  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Vials Vials @relation(fields: [vialId], references: [id], onDelete: Cascade)
+
+  @@id([userId, vialId])
+}
+
+model Vials {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name             String  @unique
+  photoUrl         String  @map("photo_url")
+  vialCollectionId Int
+  isDelete         Boolean @default(false)
+
+  VialsCollection VialsCollection     @relation(fields: [vialCollectionId], references: [id])
+  selectedByUsers UserSelectedVials[]
+}
+
+enum GenerationType {
+  FREE
+  PAID
+}
+
+enum LanguageEnum {
+  RU
+  EN
+}
+
+enum RoleEnum {
+  ADMIN
+  VIALS_MANAGER
+  SETTINGS_MANAGER
+}
