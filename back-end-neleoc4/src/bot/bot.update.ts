@@ -9,6 +9,7 @@ import {
   Start,
   Update,
 } from 'nestjs-telegraf';
+import * as heicConvert from 'heic-convert';
 import * as sharp from 'sharp';
 import { DiscountService } from 'src/discount/discount.service';
 import { ProductsService } from 'src/products/products.service';
@@ -27,6 +28,7 @@ import * as urlencode from 'urlencode';
 import { ApiSettingsService } from './../api/api-settings.service';
 import { LocalizationService } from './../messages/localization.service';
 import { RetouchService } from './../retouch/retouch.service';
+import { el } from '@faker-js/faker/.'
 
 @Update()
 export class BotUpdate {
@@ -188,8 +190,22 @@ export class BotUpdate {
           responseType: 'arraybuffer',
         });
 
-        const fileBuffer = Buffer.from(response.data);
+        let fileBuffer = Buffer.from(response.data);
+        try{
+          fileBuffer = await sharp(fileBuffer)
+            .jpeg({ quality: 100})
+            .toBuffer();
+        } catch(error: any){
+           if (error.message.includes('No decoding plugin')) {
+                fileBuffer = await convertHeicToJpeg(fileBuffer);
+           } else {
+                console.error('Error while converting image:', error);
+                await this.sentLocalizedSupportMessage(ctx, 'file_upload_error');
+                return;
+           }
 
+        }
+    
         const retouchId = await this.retouchService.sendPhotoToRetouch({
           file: fileBuffer,
           retouchURL: this.url,
@@ -1058,4 +1074,15 @@ export class BotUpdate {
 
 export function escapeMarkdownV2(text: string): string {
   return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+
+async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
+  const outputBuffer = await heicConvert({
+    buffer,
+    format: 'JPEG',
+    quality: 1
+  });
+
+  return outputBuffer;
 }
