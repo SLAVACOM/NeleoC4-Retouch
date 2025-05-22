@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Post,
+  Query,
+  Res,
+} from '@nestjs/common';
 import { Payment } from '@prisma/client';
 import { Response } from 'express';
 import { PaymentsService } from './payments.service';
@@ -17,6 +25,9 @@ export class PaymentsController {
     @Query('data') data = '{}',
     @Res() res: Response,
   ) {
+    Logger.log(
+      `GET - /payments\nRequest\ndescription: ${description}, amount: ${amount}, currency: ${currency}, invoiceId: ${invoiceId}, accountId: ${accountId}, data: ${data}`,
+    );
     const paymentHtml = `
     <!DOCTYPE html>
     <html lang="ru">
@@ -55,7 +66,9 @@ export class PaymentsController {
 
   @Post('webhook/pay')
   async handleWebhook(@Body() data: any) {
-    console.log('Webhook received:', data);
+    Logger.log(
+      'POST - /payments/webhook/pay\nRequest\n' + JSON.stringify(data),
+    );
 
     let parsedData: any = {};
     try {
@@ -74,7 +87,9 @@ export class PaymentsController {
     };
 
     await this.paymentsService.createPayment(paymentData);
-
+    Logger.log(
+      'POST - /payments/webhook/pay\nResponse\n' + JSON.stringify({ code: 0 }),
+    );
     return { code: 0 };
   }
 
@@ -97,8 +112,10 @@ export class PaymentsController {
     @Query('sortKey') sortKey: string,
     @Query('sortDirection') sortDirection: string,
   ): Promise<ReturnType<PaymentsService['getAllPayments']>> {
-  
-    return await this.paymentsService.getAllPayments({
+    Logger.log(
+      `GET - /payments/get\nRequest\npage: ${page}, perPage: ${perPage}, searchQuery: ${searchQuery}, searchCriteria: ${searchCriteria}, sortKey: ${sortKey}, sortDirection: ${sortDirection}`,
+    );
+    const response = await this.paymentsService.getAllPayments({
       searchQuery,
       searchCriteria,
       sortKey,
@@ -106,6 +123,7 @@ export class PaymentsController {
       page: Number(page),
       perPage: Number(perPage),
     });
-
+    Logger.log('GET - /payments/get\nResponse\n' + JSON.stringify(response));
+    return response;
   }
 }

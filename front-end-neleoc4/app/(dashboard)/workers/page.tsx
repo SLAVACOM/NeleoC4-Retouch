@@ -1,5 +1,6 @@
 'use client';
 
+import { EditSupportModal } from '@/components/EditSupportModal';
 import { EditWorkerModal } from '@/components/EditWorkerModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,7 +22,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEffect, useState } from 'react';
 import { WorkersService } from 'services/workers.serevice';
-import { GetWorkers, IWorker } from 'types/workers.interface';
+import { GetWorkers, IHelperWorker, IWorker } from 'types/workers.interface';
+import { Support } from './support';
 import { Worker } from './worker';
 import {
   SearchCriteria,
@@ -32,7 +34,12 @@ import {
 
 export default function WorkersPage() {
   const [data, setData] = useState<GetWorkers>();
+  const [helpers, setHelpers] = useState<IHelperWorker[]>([]);
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateSupportModalOpen, setIsCreateSupportModalOpen] =
+    useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCriteria, setSearchCriteria] = useState<SearchCriteria>(
     SearchCriteria.Id
@@ -41,17 +48,24 @@ export default function WorkersPage() {
     key: SortKeys;
     direction: SortDirection;
   } | null>(null);
+
   const [page, setPage] = useState(1);
-  const [perPage] = useState(2);
+  const [perPage] = useState(
+    Number(process.env.NEXT_PUBLIC_PERPAGE_WORKERS) || 10
+  );
   const [activeTab, setActiveTab] = useState(Status.All);
 
   const fetchData = async (params: URLSearchParams) => {
-    params.set('page', page.toString());  
+    params.set('page', page.toString());
     params.set('perPage', perPage.toString());
 
     const res = await WorkersService.getWorkers(
       Object.fromEntries(params.entries())
     );
+
+    // const helpers = await WorkersService.getHelpers();
+
+    setHelpers(helpers);
     setData(res);
   };
 
@@ -63,8 +77,7 @@ export default function WorkersPage() {
     const sortKey = (params.get('sortKey') as SortKeys) || SortKeys.Id;
     const sortDirection =
       (params.get('sortDirection') as SortDirection) || SortDirection.Asc;
-    const statusKey =
-      (params.get('status') as Status) || Status.All;
+    const statusKey = (params.get('status') as Status) || Status.All;
 
     setSearchQuery(searchQuery);
     setSearchCriteria(searchCriteria);
@@ -120,6 +133,14 @@ export default function WorkersPage() {
     );
   };
 
+  const handleSupportSave = (updatedSupport: IHelperWorker) => {
+    setHelpers((prevHelpers) =>
+      prevHelpers.map((support) =>
+        support.id === updatedSupport.id ? updatedSupport : support
+      )
+    );
+  }
+
   const handleCreate = (newWorker: IWorker) => {
     setData((prevData) =>
       prevData
@@ -131,6 +152,15 @@ export default function WorkersPage() {
         : { workers: [newWorker], userCount: 1, pageCount: 1 }
     );
   };
+
+  const handleCreateSupport = (support: IHelperWorker) => {
+  setHelpers((prevHelpers) => {
+    if (!prevHelpers) return [support];
+    const exists = prevHelpers.some((s) => s.id === support.id)
+    if (exists) return prevHelpers.map((s) => (s.id === support.id ? support : s));
+    return [support, ...prevHelpers];
+  });
+};
 
   const handleSort = (key: SortKeys) => {
     let direction: SortDirection = SortDirection.Asc;
@@ -174,6 +204,51 @@ export default function WorkersPage() {
 
   return (
     <Card>
+      {/* <CardHeader>
+        <CardTitle>Тех. Поддержка</CardTitle>
+        <CardDescription>Управляйте техподдержкой.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Button
+          size="sm"
+          variant="default"
+          className="h-8 gap-1"
+          onClick={() => setIsCreateSupportModalOpen(true)}
+        >
+          Добавить техподдержку
+        </Button>
+        <Tabs defaultValue={activeTab} onValueChange={handleStatusChange}>
+          <TabsContent value={activeTab}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => handleSort(SortKeys.Id)}
+                  >
+                    ID {getSortDirectionIcon(SortKeys.Id)}
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => handleSort(SortKeys.Name)}
+                  >
+                    Username {getSortDirectionIcon(SortKeys.Name)}
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {helpers.map((support) => (
+                  <Support
+                    key={support.id}
+                    support={support}
+                    onSave={handleSupportSave}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          </TabsContent>
+        </Tabs>
+      </CardContent> */}
       <CardHeader>
         <CardTitle>Работники</CardTitle>
         <CardDescription>
@@ -282,7 +357,6 @@ export default function WorkersPage() {
           из <strong>{data?.userCount}</strong> работников
         </div>
       </CardContent>
-      <CardFooter>{/* Add any footer content if needed */}</CardFooter>
       <EditWorkerModal
         worker={
           {
@@ -295,6 +369,18 @@ export default function WorkersPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSave={handleCreate}
+      />
+
+      <EditSupportModal
+        support={
+          {
+            id: 0,
+            info: ''
+          } as IHelperWorker
+        }
+        isOpen={isCreateSupportModalOpen}
+        onClose={() => setIsCreateSupportModalOpen(false)}
+        onSave={handleCreateSupport}
       />
     </Card>
   );

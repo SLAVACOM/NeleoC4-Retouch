@@ -2,8 +2,9 @@ import axios from 'axios';
 import { getSession } from 'next-auth/react';
 import { getContentType } from './api.helper';
 
-const SERVER_URL = process.env.API_URL || 'http://89.111.131.235:5000/';
+const SERVER_URL = process.env.NEXT_PUBLIC_API_URL || 'http://89.111.131.235:5000/';
 // const SERVER_URL = process.env.API_URL || 'http://localhost:5000/';
+console.log('SERVER_URL:', process.env.NEXT_PUBLIC_API_URL);
 
 const axiosOptions = {
   baseURL: SERVER_URL,

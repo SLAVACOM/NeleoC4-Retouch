@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { GenerationType, UsersSettings } from '@prisma/client';
 import axios from 'axios';
 import * as FormData from 'form-data';
@@ -18,6 +18,7 @@ export class RetouchService {
 
   async sendPhotoToRetouch(data: SendRetouchDto): Promise<string> {
     try {
+      Logger.log('sendPhotoToRetouch\nRequest\n' + JSON.stringify(data));
       const settings = await this.settingsService.getSettingsById(
         data.settingsId,
       );
@@ -46,20 +47,29 @@ export class RetouchService {
           retouchId: response.data.id,
         },
       });
+      Logger.log(
+        'sendPhotoToRetouch\nResponse\n' +
+          JSON.stringify(newGeneration.retouchId),
+      );
       return newGeneration.retouchId;
     } catch (error) {
-      console.error(error);
+      Logger.error('sendPhotoToRetouch\nError\n' + error);
       throw new Error('Ошибка отправки файла');
     }
   }
 
   async editSetting(userId: number, settingId: number): Promise<UsersSettings> {
-    return await this.prisma.usersSettings.update({
+    Logger.log(
+      `editSetting\nRequest\nuserId: ${userId}, settingId: ${settingId}`,
+    );
+    const response = await this.prisma.usersSettings.update({
       where: { userId },
       data: {
         settingsId: settingId,
       },
     });
+    Logger.log('editSetting\nResponse\n' + JSON.stringify(response));
+    return response;
   }
 
   async addVialsAndWatermark(
@@ -69,6 +79,9 @@ export class RetouchService {
     customWatermarkBuffer?: Buffer,
   ): Promise<Buffer> {
     try {
+      Logger.log(
+        `addVialsAndWatermark\nRequest\nbaseImage: ${baseImage}, vialsPaths: ${JSON.stringify(vialsPaths)}, addWatermark: ${addWatermark}`,
+      );
       let baseImageBuffer = await this.downloadImage(baseImage);
       let compositeArray: sharp.OverlayOptions[] = [];
 
@@ -129,19 +142,22 @@ export class RetouchService {
         .composite(compositeArray)
         .toBuffer();
 
+
       return result;
     } catch (error) {
-      console.error(error);
+      Logger.error('addVialsAndWatermark\nError\n' + error);
       throw new Error(`Ошибка обработки изображения: ${error.message}`);
     }
   }
 
   async downloadImage(url: string): Promise<Buffer> {
     try {
+      Logger.log('downloadImage\nRequest\nurl: ' + url);
       const response = await axios.get(url, { responseType: 'arraybuffer' });
+      
       return Buffer.from(response.data);
     } catch (error) {
-      console.error(error);
+      Logger.error('downloadImage\nError\n' + error);
       throw new Error(`Ошибка загрузки изображения: ${error.message}`);
     }
   }

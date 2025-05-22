@@ -30,7 +30,7 @@ export default function TariffsPage() {
   const [sortKey, setSortKey] = useState('id');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
-  const [perPage] = useState(5);
+  const [perPage] = useState(Number(process.env.NEXT_PUBLIC_PERPAGE_PRODUCTS) || 10);
   const [activeTab, setActiveTab] = useState(Status.All);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<any>(null);

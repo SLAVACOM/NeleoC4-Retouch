@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
-  Patch,
   Post,
   Put,
   Query,
@@ -12,7 +12,6 @@ import {
 } from '@nestjs/common';
 import { ProductDto } from './dto/product.dto';
 import { ProductsService } from './products.service';
-import { console } from 'inspector'
 
 @Controller('products')
 export class ProductsController {
@@ -26,8 +25,10 @@ export class ProductsController {
     @Query('page') page = 1,
     @Query('perPage') perPage: string,
     @Query('status') status = 'all',
-  ){
-  
+  ) {
+    Logger.log(
+      `GET - /products\nRequest\nname: ${name}, sortKey: ${sortKey}, sortDirection: ${sortDirection}, page: ${page}, perPage: ${perPage}, status: ${status}`,
+    );
     const params = {
       name,
       sortKey,
@@ -36,25 +37,34 @@ export class ProductsController {
       perPage: Number(perPage),
       status,
     };
-    return this.productsService.getAllProducts(params); 
+    const response = await this.productsService.getAllProducts(params);
+    Logger.log('GET - /products\nResponse\n' + JSON.stringify(response));
+    return response;
   }
 
   @Get(':id')
   async getProductById(@Param('id') id: number): Promise<ProductDto> {
-    return this.productsService.getProduct(+id);
+    Logger.log(`GET - /products/${id}\nRequest`);
+    const response = await this.productsService.getProduct(+id);
+    Logger.log(`GET - /products/${id}\nResponse\n` + JSON.stringify(response));
+    return response;
   }
 
- 
   @Post()
   @UsePipes(new ValidationPipe())
   async createProduct(@Body() data: ProductDto): Promise<ProductDto> {
-    return this.productsService.createProduct(data);
+    Logger.log('POST - /products\nRequest\n' + JSON.stringify(data));
+    const response = await this.productsService.createProduct(data);
+    Logger.log('POST - /products\nResponse\n' + JSON.stringify(response));
+    return response;
   }
 
   @Put()
   @UsePipes(new ValidationPipe())
   async updateProduct(@Body() data: ProductDto): Promise<ProductDto> {
-    console.log('data', data);
-    return this.productsService.updateProduct(data);
+    Logger.log('PUT - /products\nRequest\n' + JSON.stringify(data));
+    const response = await this.productsService.updateProduct(data);
+    Logger.log('PUT - /products\nResponse\n' + JSON.stringify(response));
+    return response;
   }
 }

@@ -8,6 +8,7 @@ import {
   UseInterceptors,
   UsePipes,
   ValidationPipe,
+  Logger
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Generation } from '@prisma/client';
@@ -20,12 +21,17 @@ export class GenerationController {
 
   @Get()
   async getGeneration(): Promise<Generation[]> {
-    return this.generationService.getGenerations();
+    Logger.log('GET - /generations');
+    const response = await this.generationService.getGenerations();
+    return response;
   }
 
   @Get('id')
   async getGenerationByID(@Param('id') id: number): Promise<Generation> {
-    return this.generationService.getGenerationById(+id);
+    Logger.log(`GET - /generations/${id}`);
+    const response = await this.generationService.getGenerationById(+id);
+    Logger.log('Response\n' + JSON.stringify(response));
+    return response;
   }
 
  

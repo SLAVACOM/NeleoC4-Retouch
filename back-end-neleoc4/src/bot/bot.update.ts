@@ -1009,14 +1009,14 @@ export class BotUpdate {
     console.log('Text message received:', message.text);
 
     if (this.promoCodeSet.has(BigInt(ctx.from.id))) {
+      this.promoCodeSet.delete(BigInt(ctx.from.id));
       try {
         await this.promoCodeService.checkPromoCode(message.text, user.id);
       } catch (e) {
         console.error('Error in promoCodeService.checkPromoCode', e);
         await this.sentLocalizedSupportMessage(ctx, e.message);
         return;
-      }
-      this.promoCodeSet.delete(BigInt(ctx.from.id));
+      } 
 
       const { type, count } = await this.promoCodeService.activatePromoCode(
         message.text,
@@ -1051,7 +1051,7 @@ export class BotUpdate {
     console.log('Admin IDs:', admins);
     admins.forEach(async (admin) => {
       try {
-        await this.bot.telegram.sendMessage(admin, message);
+        await this.bot.telegram.sendMessage(Number(admin), message);
       } catch (e) {
         console.error('Error in sendMessageToAdmin', e);
       }

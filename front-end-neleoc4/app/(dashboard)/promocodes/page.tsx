@@ -40,7 +40,7 @@ export default function CustomersPage() {
     direction: Direction;
   } | null>(null);
   const [page, setPage] = useState(1);
-  const [perPage] = useState(5);
+  const [perPage] = useState(Number(process.env.NEXT_PUBLIC_PERPAGE_PROMOCODES) || 10);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async (params: URLSearchParams) => {

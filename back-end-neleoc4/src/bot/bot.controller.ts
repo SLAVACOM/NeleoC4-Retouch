@@ -1,13 +1,5 @@
-import {
-  Body,
-  Controller,
-  Logger,
-  Post,
-  UsePipes,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Body, Controller, Logger, Post } from '@nestjs/common';
 import { BotUpdate } from './bot.update';
-import { SendPhotoDto } from './dto/send-photo.dto';
 
 @Controller('bot')
 export class BotController {
@@ -27,11 +19,5 @@ export class BotController {
       `Sending message to users, ${body.message}, usersId: ${body.usersId}`,
     );
     return await this.bot.sentMessageToUsers(body.message, body.usersId);
-  }
-
-  @Post('test')
-  @UsePipes(new ValidationPipe())
-  async test(@Body() body: SendPhotoDto) {
-    // return await this.bot.sendPhotoToUser(body);
   }
 }

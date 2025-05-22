@@ -46,7 +46,7 @@ export default function UsersPage() {
     direction: SortDirection;
   } | null>(null);
   const [page, setPage] = useState(1);
-  const [perPage] = useState(5);
+  const [perPage] = useState(Number(process.env.NEXT_PUBLIC_PERPAGE_USERS) || 10);
   const [activeTab, setActiveTab] = useState(UserStatus.All);
 
   const fetchData = async (params: URLSearchParams) => {

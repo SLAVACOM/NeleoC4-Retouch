@@ -1,7 +1,15 @@
-import { Body, Controller, Get, Patch, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Patch,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import { Auth } from 'src/auth/decorators/auth.decorator';
 import { DiscountService } from './discount.service';
 import { DiscountDto } from './dto/discount.dto';
-import { Auth } from 'src/auth/decorators/auth.decorator'
 
 @Controller('discount')
 export class DiscountController {
@@ -9,13 +17,17 @@ export class DiscountController {
 
   @Get()
   async getDiscount() {
-    return this.service.getDiscount();
+    Logger.log('GET - /discount\nRequest');
+    const response = await this.service.getDiscount();
+    return response;
   }
 
-  @Auth('ADMIN')  
+  @Auth('ADMIN')
   @Patch()
-	@UsePipes(new ValidationPipe())
+  @UsePipes(new ValidationPipe())
   async updateDiscount(@Body() discount: DiscountDto) {
-    return this.service.updateDiscount(discount);
-  }  
+    Logger.log('PATCH - /discount\nRequest\n' + JSON.stringify(discount));
+    const response = await this.service.updateDiscount(discount);
+    return response;
+  }
 }

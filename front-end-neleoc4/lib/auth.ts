@@ -24,7 +24,7 @@ declare module 'next-auth/jwt' {
     user?: IUser;
   }
 }
-const API_URL = process.env.API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export const authOptions = {
   trustHost: true
@@ -55,7 +55,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         if (!credentials) return null;
         try {
-          const res = await fetch(`${process.env.API_URL}/auth/login`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

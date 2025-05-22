@@ -14,3 +14,8 @@ export interface GetWorkers {
   pageCount: number;
 }
 
+
+export interface IHelperWorker {
+  id: number;
+  info: string;
+}

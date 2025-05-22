@@ -13,7 +13,6 @@ import { RoleEnum } from '@prisma/client';
 import { Auth } from 'src/auth/decorators/auth.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UserService } from './user.service';
-import { log } from 'console'
 
 @Controller('users')
 export class UserController {

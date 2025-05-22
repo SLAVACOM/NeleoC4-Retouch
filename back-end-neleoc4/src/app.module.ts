@@ -15,6 +15,7 @@ import { PromoCodeModule } from './promocodes/promocode.module';
 import { RetouchModule } from './retouch/retouch.module';
 import { UserModule } from './users/user.module';
 import { VialsCollectionModule as VialsModule } from './vials/vials.module';
+import { SupportModule } from './support/support.module'
 
 
 @Module({
@@ -30,6 +31,7 @@ import { VialsCollectionModule as VialsModule } from './vials/vials.module';
     PromoCodeModule,
     GenerationModule,
     BotModule,
+    SupportModule,
     ScheduleModule.forRoot(),
     VialsModule,
     LocalizationModule,

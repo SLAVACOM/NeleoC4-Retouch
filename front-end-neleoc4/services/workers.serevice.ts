@@ -1,6 +1,8 @@
-import { GetWorkers, IWorker } from 'types/workers.interface';
+import { GetWorkers, IHelperWorker, IWorker } from 'types/workers.interface';
 import { axiosClassic } from './api.service';
+
 const WORKERS = '/workers';
+const SUPPORT = '/support';
 
 export const WorkersService = {
   async getWorkers(params?: Record<string, string>): Promise<GetWorkers> {
@@ -28,5 +30,31 @@ export const WorkersService = {
       data
     });
     return res;
-  }
-};
+  },
+
+  async getHelpers(): Promise<IHelperWorker[]> { 
+    const res = await axiosClassic({
+      method: 'GET',
+      url: SUPPORT
+    }) 
+    return res.data;
+  },
+
+  async createHelper(data: IHelperWorker) {
+    const res = await axiosClassic({
+      method: 'POST',
+      url: SUPPORT,
+      data
+    });
+    return res;
+  },
+
+  async updateHelper(data: IHelperWorker) {
+    const res = await axiosClassic({
+      method: 'PUT',
+      url: SUPPORT,
+      data
+    });
+    return res;
+  },
+}

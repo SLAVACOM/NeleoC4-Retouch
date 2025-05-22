@@ -31,7 +31,7 @@ export default function PaymentsPage() {
   const [sortKey, setSortKey] = useState('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
-  const [perPage] = useState(10);
+  const [perPage] = useState(Number(process.env.NEXT_PUBLIC_PERPAGE_PAYMENTS) || 10);
   const router = useRouter();
 
 
