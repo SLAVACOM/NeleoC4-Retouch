@@ -13,7 +13,7 @@ declare module 'next-auth' {
   interface Session {
     accessToken?: string;
     refreshToken?: string;
-    user?: IUser;
+    user?: (AdapterUser & IUser) | null;
   }
 }
 
@@ -24,7 +24,7 @@ declare module 'next-auth/jwt' {
     user?: IUser;
   }
 }
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:1234/';
 
 export const authOptions = {
   trustHost: true
@@ -35,7 +35,7 @@ async function isAccessTokenExpired(accessToken?: string): Promise<boolean> {
 
   try {
     const decoded: { exp: number } = jwtDecode(accessToken);
-    const currentTime = Math.floor(Date.now() / 1000); // Время в секундах
+    const currentTime = Math.floor(Date.now() / 1000);
     return decoded.exp < currentTime;
   } catch (error) {
     console.error('Ошибка при декодировании токена:', error);
@@ -55,7 +55,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       authorize: async (credentials) => {
         if (!credentials) return null;
         try {
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+          console.log(API_URL);
+          const res = await fetch(`${API_URL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -89,8 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             };
           }
         } catch (error) {
-          console.error('Ошибка авторизации:', error );
-          
+          console.error('Ошибка авторизации:', error);
         }
         return null;
       }
@@ -106,7 +106,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async jwt({ token, user }) {
-      // Добавляем информацию о пользователе в токен
       if (user) {
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
@@ -117,7 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         (await isAccessTokenExpired(token.accessToken)) &&
         token.refreshToken
       ) {
-        console.log('🔄 Токен истек, пытаемся обновить');
+        console.log('Токен истек, пытаемся обновить');
 
         try {
           const response = await fetch(`${API_URL}/auth/login/access-token`, {
@@ -132,18 +131,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.accessToken = data.accessToken;
           token.refreshToken = data.refreshToken;
         } catch (error) {
-          console.error('Ошибка обновления токена в jwt callback:', error);
+          console.error('❌ Ошибка обновления токена, очищаем токены:', error);
+          delete token.accessToken;
+          delete token.refreshToken;
+          delete token.user;
+          token.error = 'RefreshAccessTokenError';
         }
       }
 
       return token;
     },
     async session({ session, token }) {
-      // Добавляем токены в сессию
+      if (token.user && token.accessToken) {
+        session.user = token.user as AdapterUser & IUser;
+        session.accessToken = token.accessToken;
+        session.refreshToken = token.refreshToken;
+      } else {
+        if (session && 'user' in session) (session as any).user = undefined;
 
-      session.accessToken = token.accessToken;
-      session.refreshToken = token.refreshToken;
-      session.user = token.user as AdapterUser & IUser;
+        session.accessToken = undefined;
+        session.refreshToken = undefined;
+      }
       return session;
     },
 

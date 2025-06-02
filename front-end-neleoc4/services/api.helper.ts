@@ -1,5 +1,3 @@
-import { Session } from 'next-auth';
-
 export const getContentType = () => ({
   'Content-Type': 'application/json'
 });
@@ -13,4 +11,3 @@ export const errorCatch = (error: any): string => {
       : message
     : error.message;
 };
-

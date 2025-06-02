@@ -1,5 +1,6 @@
-import { GenerationType, LanguageEnum, User } from '@prisma/client';
+import { GenerationType, LanguageEnum, Payment, User } from '@prisma/client';
 import axios from 'axios';
+import * as heicConvert from 'heic-convert';
 import {
   Action,
   Command,
@@ -9,7 +10,6 @@ import {
   Start,
   Update,
 } from 'nestjs-telegraf';
-import * as heicConvert from 'heic-convert';
 import * as sharp from 'sharp';
 import { DiscountService } from 'src/discount/discount.service';
 import { ProductsService } from 'src/products/products.service';
@@ -28,7 +28,6 @@ import * as urlencode from 'urlencode';
 import { ApiSettingsService } from './../api/api-settings.service';
 import { LocalizationService } from './../messages/localization.service';
 import { RetouchService } from './../retouch/retouch.service';
-import { el } from '@faker-js/faker/.'
 
 @Update()
 export class BotUpdate {
@@ -191,21 +190,20 @@ export class BotUpdate {
         });
 
         let fileBuffer = Buffer.from(response.data);
-        try{
+        try {
           fileBuffer = await sharp(fileBuffer)
-            .jpeg({ quality: 100})
+            .jpeg({ quality: 100 })
             .toBuffer();
-        } catch(error: any){
-           if (error.message.includes('No decoding plugin')) {
-                fileBuffer = await convertHeicToJpeg(fileBuffer);
-           } else {
-                console.error('Error while converting image:', error);
-                await this.sentLocalizedSupportMessage(ctx, 'file_upload_error');
-                return;
-           }
-
+        } catch (error: any) {
+          if (error.message.includes('No decoding plugin')) {
+            fileBuffer = await convertHeicToJpeg(fileBuffer);
+          } else {
+            console.error('Error while converting image:', error);
+            await this.sentLocalizedSupportMessage(ctx, 'file_upload_error');
+            return;
+          }
         }
-    
+
         const retouchId = await this.retouchService.sendPhotoToRetouch({
           file: fileBuffer,
           retouchURL: this.url,
@@ -293,7 +291,22 @@ export class BotUpdate {
     );
     if (!user) return;
 
-    const discount = await this.discountService.getDiscount();
+    const globalDiscount = await this.discountService.getDiscount();
+
+    let personalDiscountSum = 0;
+    let personalDiscountPercent = 0;
+
+    if (user.discountId) {
+      const promocode = await this.promoCodeService.getPromoCodeByID(
+        user.discountId,
+      );
+      if (promocode) {
+        if (promocode.discountPercentage > 0)
+          personalDiscountPercent = promocode.discountPercentage;
+        else if (promocode.discountSum > 0)
+          personalDiscountSum = promocode.discountSum;
+      }
+    }
 
     const products = (
       await this.productService.getAllProducts({
@@ -302,44 +315,57 @@ export class BotUpdate {
     ).products;
 
     const buttons: InlineKeyboardButton[][] = [];
+    const hasAnyDiscount =
+      globalDiscount > 0 ||
+      personalDiscountPercent > 0 ||
+      personalDiscountSum > 0;
 
     for (const product of products) {
-      let textLine: Promise<string>;
-      let price = product.price;
-      if (discount > 0) {
-        price = Math.round(product.price * (1 - discount / 100));
+      const basePrice = product.price;
 
+      let discountedPrice = basePrice;
+      if (globalDiscount > 0) discountedPrice *= 1 - globalDiscount / 100;
+      if (personalDiscountPercent > 0)
+        discountedPrice *= 1 - personalDiscountPercent / 100;
+      if (personalDiscountSum > 0) discountedPrice -= personalDiscountSum;
+
+      const finalPrice = Math.max(1, Math.round(discountedPrice));
+
+      let textLine;
+      if (hasAnyDiscount) {
         textLine = this.getLocalizedSupportMessage(
           user.language,
           'product_price_with_discount',
           new Map([
             ['productName', escapeMarkdownV2(product.name)],
-            ['oldPrice', product.price.toString()],
-            ['newPrice', price.toString()],
+            ['oldPrice', basePrice.toString()],
+            ['newPrice', finalPrice.toString()],
           ]),
         );
-      } else
+      } else {
         textLine = this.getLocalizedSupportMessage(
           user.language,
           'product_price',
           new Map([
             ['productName', escapeMarkdownV2(product.name)],
-            ['price', price.toString()],
+            ['price', finalPrice.toString()],
           ]),
         );
+      }
 
       buttons.push([
-        Markup.button.callback(await textLine, `buy_${product.id}_${price}`),
+        Markup.button.callback(
+          await textLine,
+          `buy_${product.id}_${finalPrice}`,
+        ),
       ]);
     }
-
-    const messageText =
-      discount > 0
-        ? await this.getLocalizedSupportMessage(
-            user.language,
-            'all_products_with_discount',
-          )
-        : await this.getLocalizedSupportMessage(user.language, 'all_products');
+    const messageText = hasAnyDiscount
+      ? await this.getLocalizedSupportMessage(
+          user.language,
+          'all_products_with_discount',
+        )
+      : await this.getLocalizedSupportMessage(user.language, 'all_products');
 
     await ctx.reply(messageText, {
       parse_mode: 'MarkdownV2',
@@ -432,22 +458,32 @@ export class BotUpdate {
       this.paymentMessageId.set(+user.id, message.message_id);
   }
 
-  async confirmPayment(userId: number, amount: number) {
-    const user = await this.userService.getUserById(userId);
+  async confirmPayment(paymentData: any, payment: Payment) {
+    const user = await this.userService.getUserById(payment.userId);
     if (!user) return;
 
-    const messageId = this.paymentMessageId.get(userId);
+    const messageId = this.paymentMessageId.get(user.id);
 
+    const product = (
+      await this.productService.getProduct(+paymentData.productId)
+    ).name;
     if (messageId) {
-      const user = await this.userService.getUserById(userId);
-      if (!user) return;
+      const paymentMap = new Map([
+        ['promoCode', paymentData.promoCode || ''],
+        ['productName', product],
+        ['productId', payment.productId],
+        ['userId', user.telegramId.toString()],
+        ['username', `${user.telegramUsername}` || ''],
+        ['name', user.telegramUsername],
+        ['amount', payment.amount.toString()],
+        ['count', payment.generationCount.toString()],
+        ['totalGenerations', user.paymentGenerationCount.toString()],
+      ]);
+
       const text = await this.getLocalizedSupportMessage(
         user.language,
         'payment_success',
-        new Map([
-          ['count', amount.toString()],
-          ['total', user.paymentGenerationCount.toString()],
-        ]),
+        paymentMap,
       );
 
       try {
@@ -460,10 +496,14 @@ export class BotUpdate {
       } catch (e) {
         console.error('Error deleting payment message:', e);
       }
-      this.paymentMessageId.delete(userId);
-      await this.sendMessageToAdmin(
-        `Пользователь ${user.telegramId} совершил покупку на ${amount}₽`,
+      this.paymentMessageId.delete(user.id);
+
+      const message = await this.getLocalizedSupportMessage(
+        'RU',
+        'payment_success_admin',
+        paymentMap,
       );
+      await this.sendMessageToAdmin(message);
     }
   }
 
@@ -1016,7 +1056,7 @@ export class BotUpdate {
         console.error('Error in promoCodeService.checkPromoCode', e);
         await this.sentLocalizedSupportMessage(ctx, e.message);
         return;
-      } 
+      }
 
       const { type, count } = await this.promoCodeService.activatePromoCode(
         message.text,
@@ -1076,12 +1116,11 @@ export function escapeMarkdownV2(text: string): string {
   return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
-
 async function convertHeicToJpeg(buffer: Buffer): Promise<Buffer> {
   const outputBuffer = await heicConvert({
     buffer,
     format: 'JPEG',
-    quality: 1
+    quality: 1,
   });
 
   return outputBuffer;

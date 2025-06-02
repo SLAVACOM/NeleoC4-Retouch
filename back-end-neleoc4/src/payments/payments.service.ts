@@ -12,7 +12,7 @@ export class PaymentsService {
   async createPayment(paymentData: any) {
     const generationCount = paymentData.generationCount || 0;
 
-    const res = await this.prisma.payment.create({
+    const payment = await this.prisma.payment.create({
       data: {
         promoCode: paymentData.promoCode,
         amount: paymentData.amount,
@@ -26,7 +26,7 @@ export class PaymentsService {
       },
     });
 
-    await this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: +paymentData.userId },
       data: {
         paymentGenerationCount: {
@@ -35,6 +35,7 @@ export class PaymentsService {
         discountId: paymentData.promoCode ? null : undefined,
       },
     });
+
 
     if (paymentData.promoCode && paymentData.promoCode !== 'null') {
       await this.prisma.promoCode.update({
@@ -47,9 +48,9 @@ export class PaymentsService {
       });
     }
 
-    this.botUpdate.confirmPayment(+paymentData.userId, generationCount);
+    this.botUpdate.confirmPayment(paymentData, payment,);
 
-    return res;
+    return payment;
   }
 
   async getPaymentById(id: number) {
