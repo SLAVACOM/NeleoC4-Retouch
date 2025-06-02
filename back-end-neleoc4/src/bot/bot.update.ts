@@ -74,6 +74,7 @@ export class BotUpdate {
           console.log(
             `User ${ctx.from.id} exists. Sending welcome back message.`,
           );
+          this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
         } else {
           const userTg: CreateUserDto = {
             telegramId: BigInt(ctx.from.id),
@@ -111,6 +112,7 @@ export class BotUpdate {
       console.log(`User ${ctx.from.id} not found.`);
       return;
     }
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
     console.log(`Received photo/document from user ${ctx.from.id}.`);
 
     if (user.paymentGenerationCount <= 0 && user.freeGenerationCount <= 0) {
@@ -238,6 +240,8 @@ export class BotUpdate {
   @Command('promo')
   async activatePromo(ctx: Context) {
     if (ctx.from?.id !== undefined) {
+      this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
       this.promoCodeSet.add(BigInt(ctx.from.id));
       this.sentLocalizedSupportMessage(ctx, 'promo_code');
     }
@@ -245,7 +249,9 @@ export class BotUpdate {
 
   // отправка кнопок для выбора флаконов
   private async sendVialSelection(ctx: Context, user: User, retouchId: string) {
-    if (!ctx) return;
+    if (!ctx.from?.id) return;
+
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
 
     const selectedVials = await this.userService.getSelectedVialsId(user.id);
     const allVials = await this.vialsService.getAll();
@@ -286,6 +292,9 @@ export class BotUpdate {
   @Command('buy')
   async buy(ctx: Context) {
     if (ctx.from?.id === undefined) return;
+
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -378,6 +387,7 @@ export class BotUpdate {
     ctx.deleteMessage();
 
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
 
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
@@ -461,6 +471,7 @@ export class BotUpdate {
   async confirmPayment(paymentData: any, payment: Payment) {
     const user = await this.userService.getUserById(payment.userId);
     if (!user) return;
+    this.userService.updateUserLastActiveDate(BigInt(user.telegramId));
 
     const messageId = this.paymentMessageId.get(user.id);
 
@@ -510,6 +521,7 @@ export class BotUpdate {
   @Action('cancel_payment')
   async cancelPayment(@Ctx() ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -521,6 +533,8 @@ export class BotUpdate {
   @Action(/choiceVial_.+/)
   async toggleVial(@Ctx() ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -585,6 +599,8 @@ export class BotUpdate {
   @Command('support')
   async supportCommand(ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -617,6 +633,8 @@ export class BotUpdate {
   @Action(/goToChoiceWatermark_.+/)
   async askForWatermark(@Ctx() ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -665,6 +683,8 @@ export class BotUpdate {
   @Command('language')
   async changeLanguage(ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -700,6 +720,8 @@ export class BotUpdate {
   @Command('photosettings')
   async photoSettings(ctx: Context) {
     if (ctx.from?.id === undefined) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -728,6 +750,8 @@ export class BotUpdate {
   @Action(/language_.+/)
   async changeLanguageAction(@Ctx() ctx: Context) {
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -750,6 +774,8 @@ export class BotUpdate {
     const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
     const [_, choice, retouchId] = callbackQuery.data.split('_');
     if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
@@ -827,6 +853,8 @@ export class BotUpdate {
   @Command('generations')
   async addGenerations(ctx: Context) {
     if (ctx.from?.id !== undefined) {
+      this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
       const user = await this.userService.getUserByTelegramId(
         BigInt(ctx.from.id),
       );
@@ -983,6 +1011,8 @@ export class BotUpdate {
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     if (!user) return;
     this.bot.telegram.setMyCommands([
       {
@@ -1044,6 +1074,8 @@ export class BotUpdate {
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
     );
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
     const message = ctx.message as Message.TextMessage;
 
     console.log('Text message received:', message.text);

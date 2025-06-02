@@ -70,7 +70,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
           if (data?.accessToken && data?.refreshToken && data?.user) {
             const user: AdapterUser & IUser = {
-              id: data.user.id.toString(), // id должен быть строкой
+              id: data.user.id.toString(),
               login: data.user.login,
               roles: data.user.roles,
               name: data.user.name,
@@ -142,16 +142,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (token.user && token.accessToken) {
-        session.user = token.user as AdapterUser & IUser;
-        session.accessToken = token.accessToken;
-        session.refreshToken = token.refreshToken;
-      } else {
-        if (session && 'user' in session) (session as any).user = undefined;
-
-        session.accessToken = undefined;
-        session.refreshToken = undefined;
-      }
+      session.user = (token.user as AdapterUser & IUser) ?? null;
+      session.accessToken = token.accessToken;
+      session.refreshToken = token.refreshToken;
       return session;
     },
 

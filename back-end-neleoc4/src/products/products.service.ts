@@ -22,7 +22,7 @@ export class ProductsService {
     }
 
     const orderBy = sortKey ? { [sortKey]: sortDirection } : undefined;
-    const skip = page && perPage ? (page - 1) * perPage : undefined;
+    const skip = page && perPage ? (page - 1) * perPage : 0;
     const take = perPage ? perPage : undefined;
 
     const count = await this.prisma.product.count({

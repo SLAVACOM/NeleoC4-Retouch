@@ -9,6 +9,8 @@ export const PromoCodeService = {
       method: 'GET',
       url: `${PROMOCODES}?${queryString}`
     });
+    console.log(res.request);
+
     return res.data as GetPromoCodes;
   },
 
