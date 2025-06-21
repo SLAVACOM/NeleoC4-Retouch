@@ -136,6 +136,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           delete token.refreshToken;
           delete token.user;
           token.error = 'RefreshAccessTokenError';
+          signOut({ redirect: false });
         }
       }
 
