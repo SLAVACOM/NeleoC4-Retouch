@@ -4,14 +4,14 @@ import {
   Get,
   Logger,
   Param,
-  Post,
+  Put,
   Query,
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
 import { RoleEnum } from '@prisma/client';
 import { Auth } from 'src/auth/decorators/auth.decorator';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto';
 import { UserService } from './user.service';
 
 @Controller('users')
@@ -65,8 +65,8 @@ export class UserController {
   }
 
   @UsePipes(new ValidationPipe())
-  @Post()
-  async addUser(@Body() createUserDto: CreateUserDto) {
-    return this.userService.create(createUserDto);
+  @Put()
+  async updateUser(@Body() data : UpdateUserDto) {
+    return this.userService.updateUser(data);
   }
 }

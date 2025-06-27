@@ -1,6 +1,7 @@
 import {
 	IsNumber,
 	IsString,
+	Min,
 } from 'class-validator'
 
 export class CreateUserDto {
@@ -18,9 +19,14 @@ export class CreateUserDto {
 }
 
 export class UpdateUserDto {
-	@IsString()
-  username?: string;
+	@IsNumber()
+	@Min(0)
+  free?: number;
 
-	@IsString()
-	fullName?: string;
+	@IsNumber()
+  id: number
+
+	@IsNumber()
+	@Min(0)
+	paid?: number;
 }

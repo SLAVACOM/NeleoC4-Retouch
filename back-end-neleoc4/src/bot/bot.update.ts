@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { GenerationType, LanguageEnum, Payment, User } from '@prisma/client';
 import axios from 'axios';
 import * as heicConvert from 'heic-convert';
@@ -22,6 +23,7 @@ import { Context, Markup, session, Telegraf } from 'telegraf';
 import {
   CallbackQuery,
   InlineKeyboardButton,
+  InputMediaPhoto,
   Message,
 } from 'telegraf/typings/core/types/typegram';
 import * as urlencode from 'urlencode';
@@ -987,12 +989,43 @@ export class BotUpdate {
   }
 
   // Отправка сообщения нескольким пользователям
-  async sentMessageToUsers(message: string, usersId: number[]) {
+  async sentMessageToUsers(
+    message: string,
+    usersId: number[],
+    photos: Express.Multer.File[] = [],
+  ) {
+    if (photos.length > 10) {
+      console.error(
+        'Too many photos to send in a single message. Limit is 10.',
+      );
+      return;
+    }
+
     if (usersId === undefined)
       usersId = await this.userService.getUsersTelegramId();
-    usersId.forEach(
-      async (userId) => await this.sentMessageToUser(message, userId),
-    );
+
+    if (photos.length === 0)
+      usersId.forEach(
+        async (userId) => await this.sentMessageToUser(message, userId),
+      );
+    else
+      for (const userId of usersId) {
+        try {
+          const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
+            type: 'photo',
+            media: {
+              source: photo.buffer,
+            },
+            caption: index === 0 ? message : undefined, // подпись только к первому
+          }));
+
+          await this.bot.telegram.sendMediaGroup(userId, mediaGroup);
+        } catch (error) {
+          Logger.error(
+            `Failed to send media group to ${userId}: ${error.message}`,
+          );
+        }
+      }
   }
 
   // Отправка сообщения пользователю

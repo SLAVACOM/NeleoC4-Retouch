@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { Cron } from '@nestjs/schedule'
-import { LanguageEnum, User } from '@prisma/client'
-import { console } from 'inspector/promises'
-import { PrismaService } from 'src/prisma.service'
-import { CreateUserDto } from './dto/create-user.dto'
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { LanguageEnum, User } from '@prisma/client';
+import { console } from 'inspector/promises';
+import { PrismaService } from 'src/prisma.service';
+import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class UserService {
@@ -133,6 +133,18 @@ export class UserService {
     });
   }
 
+  async updateUser(data: UpdateUserDto) {
+    await this.getUserById(data.id);
+
+    const user = await this.prisma.user.update({
+      where: { id: data.id },
+      data: {
+        freeGenerationCount: data.free || undefined,
+        paymentGenerationCount: data.paid || undefined,
+      },
+    });
+  }
+
   async deleteUser(id: number) {
     return this.prisma.user.delete({ where: { id } });
   }
@@ -226,7 +238,6 @@ export class UserService {
     return { users, totalUsers: usersCount, pageCount };
   }
 
-  
   async getUsersTelegramId(): Promise<number[]> {
     const users = await this.prisma.user.findMany({
       select: { telegramId: true },
@@ -275,5 +286,4 @@ export class UserService {
       data: { lastActiveAt: new Date() },
     });
   }
-
 }

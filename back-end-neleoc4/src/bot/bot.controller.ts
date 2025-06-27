@@ -1,4 +1,13 @@
-import { Body, Controller, Logger, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Logger,
+  ParseArrayPipe,
+  Post,
+  UploadedFiles,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { BotUpdate } from './bot.update';
 
 @Controller('bot')
@@ -14,10 +23,15 @@ export class BotController {
   }
 
   @Post('sendToUsers')
-  async sendToUsers(@Body() body: { message: string; usersId: number[] }) {
+  @UseInterceptors(FilesInterceptor('photo'))
+  async sendToUsers(
+    @UploadedFiles() photos: Express.Multer.File[],
+    @Body('message') message: string,
+    @Body('usersId') usersId: number[],
+  ) {
     Logger.log(
-      `Sending message to users, ${body.message}, usersId: ${body.usersId}`,
+      `Sending message to users, ${message}, usersId: ${usersId}`,
     );
-    return await this.bot.sentMessageToUsers(body.message, body.usersId);
+    return await this.bot.sentMessageToUsers(message, usersId, photos);
   }
 }
