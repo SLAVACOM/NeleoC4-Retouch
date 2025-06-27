@@ -19,7 +19,7 @@ export class ProductsController {
 
   @Get()
   async getAllProducts(
-    @Query('name') name: string,
+   @Query('name') name: string,
     @Query('sortKey') sortKey = 'id',
     @Query('sortDirection') sortDirection = 'asc',
     @Query('page') page = 1,

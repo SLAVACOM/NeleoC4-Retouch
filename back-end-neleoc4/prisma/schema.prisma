@@ -230,6 +230,16 @@ model Vials {
   selectedByUsers UserSelectedVials[]
 }
 
+model Messages {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messageName String @unique @map("message_name")
+  messageText String @map("message_text")
+}
+
 enum GenerationType {
   FREE
   PAID

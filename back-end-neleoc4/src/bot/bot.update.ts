@@ -945,10 +945,9 @@ export class BotUpdate {
     messageType: string,
     paramMessage?: Map<string, string>,
   ): Promise<string> {
-    let message = await this.localizationService.getMessage(
-      messageType,
-      language,
-    );
+    if (!messageType.endsWith('_EN') || !messageType.endsWith('_RU'))
+      messageType = `${messageType}_${language}`;
+    let message = await this.localizationService.getMessage(messageType);
 
     if (paramMessage) {
       for (const [key, value] of paramMessage)

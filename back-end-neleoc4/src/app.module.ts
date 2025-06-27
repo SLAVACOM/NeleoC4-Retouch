@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 
+import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { redisStore } from 'cache-manager-ioredis-yet';
+import * as process from 'process';
 import { ApiSettingsModule } from './api/api-settings.module';
 import { AuthModule } from './auth/auth.module';
 import { BotModule } from './bot/bot.module';
@@ -13,14 +16,21 @@ import { PrismaService } from './prisma.service';
 import { ProductsModule } from './products/products.module';
 import { PromoCodeModule } from './promocodes/promocode.module';
 import { RetouchModule } from './retouch/retouch.module';
+import { SupportModule } from './support/support.module';
 import { UserModule } from './users/user.module';
 import { VialsCollectionModule as VialsModule } from './vials/vials.module';
-import { SupportModule } from './support/support.module'
-
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    CacheModule.registerAsync({
+      useFactory: async () => ({
+        store: await redisStore({
+          url: process.env.REDIS_URL,
+        }),
+        ttl: 0,
+      }),
+    }),
     AuthModule,
     UserModule,
     PaymentsModule,
@@ -35,7 +45,7 @@ import { SupportModule } from './support/support.module'
     ScheduleModule.forRoot(),
     VialsModule,
     LocalizationModule,
-    PaymentsModule
+    PaymentsModule,
   ],
   providers: [PrismaService],
 })

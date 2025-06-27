@@ -17,6 +17,8 @@ import { UserService } from 'src/users/user.service';
 import { VialsService } from 'src/vials/vials/vials.service';
 import { BotController } from './bot.controller';
 import { BotUpdate } from './bot.update';
+import { CacheModule } from '@nestjs/cache-manager'; 
+
 @Module({
   imports: [
     ApiSettingsModule,
@@ -25,6 +27,7 @@ import { BotUpdate } from './bot.update';
     TelegrafModule.forRoot({
       token: process.env.BOT_TOKEN || '',
     }),
+    CacheModule.register(),
   ],
   controllers: [BotController],
   providers: [
