@@ -46,7 +46,9 @@ export default function UsersPage() {
     direction: SortDirection;
   } | null>(null);
   const [page, setPage] = useState(1);
-  const [perPage] = useState(Number(process.env.NEXT_PUBLIC_PERPAGE_USERS) || 10);
+  const [perPage] = useState(
+    Number(process.env.NEXT_PUBLIC_PERPAGE_USERS) || 10
+  );
   const [activeTab, setActiveTab] = useState(UserStatus.All);
 
   const fetchData = async (params: URLSearchParams) => {
@@ -245,6 +247,13 @@ export default function UsersPage() {
                   >
                     Telegram ID {getSortDirectionIcon(SortKeys.TelegramId)}
                   </TableHead>
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => handleSort(SortKeys.CreatedAt)}
+                  >
+                    Дата регистрации {getSortDirectionIcon(SortKeys.CreatedAt)}
+                  </TableHead>
+                  <TableHead className="cursor-pointer">Баланс </TableHead>
                   <TableHead>Действия</TableHead>
                 </TableRow>
               </TableHeader>

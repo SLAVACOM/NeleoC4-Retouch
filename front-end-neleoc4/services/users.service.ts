@@ -28,4 +28,13 @@ export const UsersService = {
     });
     return res.data;
   },
+
+  async updateUser(user: MyUser) {
+    const res = await axiosClassic({
+      url: `${USERS}`,
+      method: 'PUT',
+      data: user
+    });
+    return res;
+  }
 };

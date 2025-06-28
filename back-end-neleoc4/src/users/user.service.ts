@@ -143,6 +143,7 @@ export class UserService {
         paymentGenerationCount: data.paid || undefined,
       },
     });
+    return user;
   }
 
   async deleteUser(id: number) {

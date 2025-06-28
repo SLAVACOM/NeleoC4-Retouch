@@ -45,6 +45,7 @@ export class BotUpdate {
   private watermarkMessageId = new Map<number, string>();
   private vialSelectionMessageId = new Map<number, number>();
   private paymentMessageId = new Map<number, number>();
+  private progressMessageId = new Map<string, number>();
 
   constructor(
     @InjectBot() private readonly bot: Telegraf<Context>,
@@ -220,8 +221,15 @@ export class BotUpdate {
           type,
         });
 
-        await this.sentLocalizedSupportMessage(ctx, 'photo_sent');
-        await this.updateGenerationStatus(retouchId);
+        const text = await this.getLocalizedSupportMessage(
+          user.language,
+          'photo_sent',
+          new Map([['progress', '0']]),
+        );
+        const sendMessage = await ctx.reply(text);
+        this.progressMessageId.set(retouchId, sendMessage.message_id);
+
+        await this.updateGenerationStatus(retouchId, user);
         await this.sentLocalizedSupportMessage(ctx, 'photo_processed');
 
         if (type === GenerationType.PAID)
@@ -870,11 +878,23 @@ export class BotUpdate {
   }
 
   // Обновление статуса генерации
-  async updateGenerationStatus(id: string) {
+  async updateGenerationStatus(id: string, user: User) {
     let status = await this.getGenerationStatus(id);
     while (status.progress != 100 && status.state !== 'completed') {
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 1000));
       status = await this.getGenerationStatus(id);
+
+      const text = await this.getLocalizedSupportMessage(
+        user.language,
+        'photo_sent',
+        new Map([['progress', status.progress.toString()]]),
+      );
+      await this.bot.telegram.editMessageText(
+        Number(user.telegramId),
+        this.progressMessageId.get(id),
+        undefined,
+        text,
+      );
     }
   }
 
@@ -1016,7 +1036,7 @@ export class BotUpdate {
             media: {
               source: photo.buffer,
             },
-            caption: index === 0 ? message : undefined, // подпись только к первому
+            caption: index === 0 ? message : undefined,
           }));
 
           await this.bot.telegram.sendMediaGroup(userId, mediaGroup);
