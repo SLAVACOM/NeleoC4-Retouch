@@ -209,36 +209,39 @@ export class BotUpdate {
           }
         }
 
-        const retouchId = await this.retouchService.sendPhotoToRetouch({
-          file: fileBuffer,
-          retouchURL: this.url,
-          userId: user.id,
-          token: this.token,
-          settingsId:
-            type === GenerationType.FREE
-              ? await this.settingsService.getDefaultSettings()
-              : await this.settingsService.getUserSettings(user.id),
-          type,
-        });
+        // const retouchId = await this.retouchService.sendPhotoToRetouch({
+        //   file: fileBuffer,
+        //   retouchURL: this.url,
+        //   userId: user.id,
+        //   token: this.token,
+        //   settingsId:
+        //     type === GenerationType.FREE
+        //       ? await this.settingsService.getDefaultSettings()
+        //       : await this.settingsService.getUserSettings(user.id),
+        //   type,
+        // });
 
-        const progressBar = await getProgressBar(0);
-        const text = await this.getLocalizedSupportMessage(
-          user.language,
-          'photo_sent',
-          new Map([['progress', progressBar]]),
-        );
-        const sendMessage = await ctx.reply(text);
-        this.progressMessageId.set(retouchId, sendMessage.message_id);
+        // const progressBar = await getProgressBar(0);
+        // const text = await this.getLocalizedSupportMessage(
+        //   user.language,
+        //   'photo_sent',
+        //   new Map([['progress', progressBar]]),
+        // );
+        // const sendMessage = await ctx.reply(text);
+        // this.progressMessageId.set(retouchId, sendMessage.message_id);
 
-        await this.updateGenerationStatus(retouchId, user);
+        // await this.updateGenerationStatus(retouchId, user);
 
-        await ctx.deleteMessage(sendMessage.message_id);
-        this.progressMessageId.delete(retouchId);
+        // await ctx.deleteMessage(sendMessage.message_id);
+        // this.progressMessageId.delete(retouchId);
 
-        await this.sentLocalizedSupportMessage(ctx, 'photo_processed');
+        // await this.sentLocalizedSupportMessage(ctx, 'photo_processed');
 
-        if (type === GenerationType.PAID)
-          await this.sendVialSelection(ctx, user, retouchId);
+        const retouchId = '234567890-';
+        if (type === GenerationType.PAID) {
+          this.askAddVials(ctx, retouchId);
+        }
+        // await this.sendVialSelection(ctx, user, retouchId);
         else {
           await this.sentLocalizedSupportMessage(ctx, 'u_need_add_balance');
           const url = `${this.url}getFile/${retouchId}`;
@@ -264,8 +267,8 @@ export class BotUpdate {
 
   // отправка кнопок для выбора флаконов
   private async sendVialSelection(ctx: Context, user: User, retouchId: string) {
-    if (!ctx.from?.id) return;
-
+    if (!ctx.from?.id) return
+    
     this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
 
     const selectedVials = await this.userService.getSelectedVialsId(user.id);
@@ -661,6 +664,50 @@ export class BotUpdate {
       await ctx.reply(formattedMessage.join('\n\n'));
     } catch (error) {
       console.error('Ошибка получения данных поддержки:', error);
+    }
+  }
+
+  async askAddVials(@Ctx() ctx: Context, retouchId: string) {
+    if (!ctx.from) return;
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    ctx.reply(
+      await this.getLocalizedSupportMessage(user.language, 'vials_question'),
+      Markup.inlineKeyboard([
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'yes'),
+          `vials_choice_yes_${retouchId}`,
+        ),
+
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'no'),
+          `vials_choice_no_${retouchId}`,
+        ),
+      ]),
+    );
+  }
+
+  @Action(/vials_choice_.+/)
+  async handleVialsSelection(@Ctx() ctx: Context) {
+    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+
+    if (!ctx.from) return;
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    const [_, choice, retouchId] = callbackQuery.data.split('_');
+    await ctx.deleteMessage();
+
+    if (choice === 'yes') {
+      await this.sendVialSelection(ctx, user, retouchId);
+    } else if (choice === 'no') {
+      await this.askForWatermark(ctx);
     }
   }
 

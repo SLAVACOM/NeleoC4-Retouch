@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Vials } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
 import { VialsDto } from './dto/collection.dto';
@@ -37,7 +41,7 @@ export class VialsService {
         photoUrl: data.photoUrl,
         vialCollectionId: data.vialCollectionId,
         isDelete: data.isDelete ?? false,
-      }
+      },
     });
   }
 
@@ -47,18 +51,40 @@ export class VialsService {
     });
   }
 
-  async getAll(): Promise<Vials[]> {
-    return this.prisma.vials.findMany();
+  async getAll(params?: {
+    vialCollectionId?: number;
+    isDelete?: boolean;
+    perPage?: number;
+    page?: number;
+  }): Promise<Vials[]> {
+    const whereClause = {
+      vialCollectionId: params?.vialCollectionId ?? undefined,
+      isDelete: params?.isDelete ?? undefined,
+      perPage: params?.perPage ?? undefined,
+      page: params?.page ?? undefined,
+    };
+
+    if (params?.perPage && params?.page) {
+      whereClause['skip'] = (params.page - 1) * params.perPage;
+      whereClause['take'] = params.perPage;
+    }
+
+    const vials = await this.prisma.vials.findMany({
+      where: whereClause,
+      orderBy: { name: 'asc' },
+    });
+    if (!vials) throw new NotFoundException('Vials not found');
+    return vials;
   }
 
   async updateVials(id: number, data: VialsDto): Promise<Vials> {
     return this.prisma.vials.update({
       where: { id },
-      data:{
+      data: {
         name: data.name ?? undefined,
-        photoUrl: data.photoUrl?? undefined,
-        vialCollectionId: data.vialCollectionId?? undefined,
-        isDelete: data.isDelete?? undefined,
+        photoUrl: data.photoUrl ?? undefined,
+        vialCollectionId: data.vialCollectionId ?? undefined,
+        isDelete: data.isDelete ?? undefined,
       },
     });
   }
