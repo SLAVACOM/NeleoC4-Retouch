@@ -917,12 +917,16 @@ export class BotUpdate {
         new Map([['progress', progressBar]]),
       );
 
-      await this.bot.telegram.editMessageText(
-        Number(user.telegramId),
-        this.progressMessageId.get(id),
-        undefined,
-        text,
-      );
+      try {
+        await this.bot.telegram.editMessageText(
+          Number(user.telegramId),
+          this.progressMessageId.get(id),
+          undefined,
+          text,
+        );
+      } catch (e) {
+        console.error('Error updating generation status:', e);
+      }
     }
   }
 
