@@ -53,7 +53,7 @@ export class MessagesController {
     return response;
   }
 
-  @Post('add/fromJson')
+  @Post('fromJson')
   async addMessagesFromJson(@Body() messages: JSON) {
     Logger.log(
       `POST - /messages/localization/add/fromJson Request\nmessages: ${messages}`,

@@ -44,6 +44,7 @@ export class BotUpdate {
   private promoCodeSet = new Set<BigInt>();
   private watermarkMessageId = new Map<number, string>();
   private vialSelectionMessageId = new Map<number, number>();
+  private maxVialsSelected = new Map<number, number>();
   private paymentMessageId = new Map<number, number>();
   private progressMessageId = new Map<string, number>();
 
@@ -87,7 +88,6 @@ export class BotUpdate {
             language: ctx.from.language_code === 'ru' ? 'RU' : 'EN',
           };
           const newUser = await this.userService.create(userTg);
-          // console.log(`New user created: ${JSON.stringify(newUser)}`);
 
           await this.setUserCommands(ctx);
 
@@ -221,15 +221,20 @@ export class BotUpdate {
           type,
         });
 
+        const progressBar = await getProgressBar(0);
         const text = await this.getLocalizedSupportMessage(
           user.language,
           'photo_sent',
-          new Map([['progress', '0']]),
+          new Map([['progress', progressBar]]),
         );
         const sendMessage = await ctx.reply(text);
         this.progressMessageId.set(retouchId, sendMessage.message_id);
 
         await this.updateGenerationStatus(retouchId, user);
+
+        await ctx.deleteMessage(sendMessage.message_id);
+        this.progressMessageId.delete(retouchId);
+
         await this.sentLocalizedSupportMessage(ctx, 'photo_processed');
 
         if (type === GenerationType.PAID)
@@ -559,8 +564,28 @@ export class BotUpdate {
       await this.userService.removeSelectedVial(user.id, +vialId);
       selectedVials = selectedVials.filter((id) => id !== +vialId);
     } else {
-      if (selectedVials.length >= 2) {
-        await this.sentLocalizedSupportMessage(ctx, 'max_vials_selected');
+      if (
+        selectedVials.length >= (Number(process.env.MAX_VIALS_SELECTED) || 2)
+      ) {
+        if (this.maxVialsSelected.has(user.id)) {
+          try {
+            await this.bot.telegram.deleteMessage(
+              Number(user.telegramId),
+              this.maxVialsSelected.get(user.id)!,
+            );
+          } catch (e) {
+            Logger.error(
+              `Error deleting max vials message to user:${user.telegramId} \n${e}`,
+            );
+          }
+        }
+        const message = await this.sentLocalizedSupportMessage(
+          ctx,
+          'max_vials_selected',
+        );
+        if (message?.message_id)
+          this.maxVialsSelected.set(user.id, message.message_id);
+
         return;
       }
       this.userService.addSelectedVial(user.id, +vialId);
@@ -884,11 +909,14 @@ export class BotUpdate {
       await new Promise((r) => setTimeout(r, 1000));
       status = await this.getGenerationStatus(id);
 
+      const progressBar = await getProgressBar(status.progress);
+
       const text = await this.getLocalizedSupportMessage(
         user.language,
         'photo_sent',
-        new Map([['progress', status.progress.toString()]]),
+        new Map([['progress', progressBar]]),
       );
+
       await this.bot.telegram.editMessageText(
         Number(user.telegramId),
         this.progressMessageId.get(id),
@@ -945,7 +973,7 @@ export class BotUpdate {
     messageType: string,
     paramMessage?: Map<string, string>,
     language = 'EN',
-  ) {
+  ): Promise<Message.TextMessage | undefined> {
     if (!ctx.from) return;
     const user = await this.userService.getUserByTelegramId(
       BigInt(ctx.from.id),
@@ -958,7 +986,7 @@ export class BotUpdate {
       paramMessage,
     );
 
-    await ctx.reply(message);
+    return await ctx.reply(message);
   }
 
   // Получение локализованного сообщения
@@ -1011,8 +1039,9 @@ export class BotUpdate {
   // Отправка сообщения нескольким пользователям
   async sentMessageToUsers(
     message: string,
-    usersId: number[],
+    usersId: number[] | undefined,
     photos: Express.Multer.File[] = [],
+    pinned: boolean = false,
   ) {
     if (photos.length > 10) {
       console.error(
@@ -1020,38 +1049,86 @@ export class BotUpdate {
       );
       return;
     }
+    const users = await this.userService.getUsersTelegramId(usersId);
+    const pinnedUpdates: { userId: bigint; messageId: number }[] = [];
 
-    if (usersId === undefined)
-      usersId = await this.userService.getUsersTelegramId();
+    for (const user of users) {
+      const userId = Number(user.telegramId);
 
-    if (photos.length === 0)
-      usersId.forEach(
-        async (userId) => await this.sentMessageToUser(message, userId),
-      );
-    else
-      for (const userId of usersId) {
-        try {
+      try {
+        if (photos.length === 0) {
+          const sentMessage = await this.sentMessageToUser(message, userId);
+
+          if (pinned && sentMessage?.message_id) {
+            if (user.pinnedMessages.length > 0) {
+              await this.bot.telegram.unpinChatMessage(
+                userId,
+                user.pinnedMessages[0],
+              );
+            }
+
+            await this.bot.telegram.pinChatMessage(
+              userId,
+              sentMessage.message_id,
+              {
+                disable_notification: true,
+              },
+            );
+
+            pinnedUpdates.push({
+              userId: BigInt(user.telegramId),
+              messageId: sentMessage.message_id,
+            });
+          }
+        } else {
           const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
             type: 'photo',
-            media: {
-              source: photo.buffer,
-            },
+            media: { source: photo.buffer },
             caption: index === 0 ? message : undefined,
           }));
 
-          await this.bot.telegram.sendMediaGroup(userId, mediaGroup);
-        } catch (error) {
-          Logger.error(
-            `Failed to send media group to ${userId}: ${error.message}`,
+          const sentMessages = await this.bot.telegram.sendMediaGroup(
+            userId,
+            mediaGroup,
           );
+
+          // Пин первого сообщения из группы
+          if (pinned) {
+            const pinMessage = await this.bot.telegram.pinChatMessage(
+              userId,
+              sentMessages[0].message_id,
+              {
+                disable_notification: true,
+              },
+            );
+
+            if (user.pinnedMessages.length > 0) {
+              await this.bot.telegram.deleteMessage(
+                userId,
+                user.pinnedMessages[0],
+              );
+            }
+            pinnedUpdates.push({
+              userId: BigInt(user.telegramId),
+              messageId: sentMessages[0].message_id,
+            });
+          }
         }
+      } catch (error) {
+        Logger.error(
+          `Failed to send message to user ${userId}: ${error.message}`,
+        );
       }
+    }
+    if (pinnedUpdates.length > 0) {
+      await this.userService.addPinnedMessage(pinnedUpdates);
+    }
   }
 
   // Отправка сообщения пользователю
   async sentMessageToUser(message: string, userId: number) {
     try {
-      await this.bot.telegram.sendMessage(userId, message);
+      return await this.bot.telegram.sendMessage(userId, message);
     } catch (e) {
       console.error('Error in sentMessageToUser', e);
     }
@@ -1194,6 +1271,17 @@ export class BotUpdate {
       console.error('Error in sendVideo', e);
     }
   }
+}
+
+async function getProgressBar(percent: number): Promise<string> {
+  const totalBlocks = 15;
+  const filledBlockChar = '█';
+  const emptyBlockChar = '░';
+
+  const filledBlocks = Math.max(1, Math.round((percent / 100) * totalBlocks));
+  const emptyBlocks = totalBlocks - filledBlocks;
+
+  return `[${filledBlockChar.repeat(filledBlocks)}${emptyBlockChar.repeat(emptyBlocks)}] ${percent}%`;
 }
 
 export function escapeMarkdownV2(text: string): string {

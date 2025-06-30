@@ -42,6 +42,7 @@ model User {
   generations Generation[]
   payments    Payment[]
 
+  pinnedMessages Int[] @default([]) @map("pinned_messages")
   discountId Int? @map("have_discount")
 
   usersUsePromocodes UsersUsePromocodes[]

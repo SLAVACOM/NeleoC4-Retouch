@@ -24,12 +24,18 @@ import { VialsCollectionModule as VialsModule } from './vials/vials.module';
   imports: [
     ConfigModule.forRoot(),
     CacheModule.registerAsync({
-      useFactory: async () => ({
-        store: await redisStore({
-          url: process.env.REDIS_URL,
-        }),
-        ttl: 0,
-      }),
+      useFactory: async () => {
+        const redisUrl = process.env.REDIS_URL || 'redis://89.111.131.235:6379';
+        console.log('Connecting to Redis at:', redisUrl);
+
+        return {
+          store: redisStore, 
+          options: {
+            url: redisUrl, 
+          },
+          ttl: 0,
+        };
+      },
     }),
     AuthModule,
     UserModule,

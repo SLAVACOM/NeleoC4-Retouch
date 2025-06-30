@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Logger,
-  ParseArrayPipe,
   Post,
   UploadedFiles,
   UseInterceptors,
@@ -28,10 +27,9 @@ export class BotController {
     @UploadedFiles() photos: Express.Multer.File[],
     @Body('message') message: string,
     @Body('usersId') usersId: number[],
+    @Body('pinned') pinned: boolean = false,
   ) {
-    Logger.log(
-      `Sending message to users, ${message}, usersId: ${usersId}`,
-    );
-    return await this.bot.sentMessageToUsers(message, usersId, photos);
+    Logger.log(`Sending message to users, ${message}, usersId: ${usersId}, pinned: ${pinned}, photos: ${photos.length}`);
+    return await this.bot.sentMessageToUsers(message, usersId, photos, pinned);
   }
 }

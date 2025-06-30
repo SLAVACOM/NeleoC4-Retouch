@@ -47,6 +47,23 @@ export class UserService {
     return data.map((vial) => vial.vialId);
   }
 
+  async addPinnedMessage(
+    userMessageMap: { userId: bigint; messageId: number }[],
+  ): Promise<void> {
+    await Promise.allSettled(
+      userMessageMap.map(({ userId, messageId }) =>
+        this.prisma.user.update({
+          where: { telegramId: Number(userId) },
+          data: {
+            pinnedMessages: {
+              set: [messageId],
+            },
+          },
+        }),
+      ),
+    );
+  }
+
   async addSelectedVial(userId: number, vialId: number) {
     const existingVial = await this.prisma.userSelectedVials.findUnique({
       where: {
@@ -239,11 +256,18 @@ export class UserService {
     return { users, totalUsers: usersCount, pageCount };
   }
 
-  async getUsersTelegramId(): Promise<number[]> {
-    const users = await this.prisma.user.findMany({
-      select: { telegramId: true },
+  async getUsersTelegramId(
+    userIds?: number[],
+  ): Promise<{ telegramId: bigint; pinnedMessages: number[] }[]> {
+    if (userIds && userIds.length > 0) {
+      return await this.prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { telegramId: true, pinnedMessages: true },
+      });
+    }
+    return await this.prisma.user.findMany({
+      select: { telegramId: true, pinnedMessages: true },
     });
-    return users.map((user) => Number(user.telegramId));
   }
 
   async incrementPaidUserGenerationsCount(userId: number, count: number = 1) {
