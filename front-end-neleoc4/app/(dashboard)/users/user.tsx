@@ -54,13 +54,13 @@ export function User({ user, onSave, onSendMessage }: UserProps) {
       const res = await UsersService.updateUser(updatedUser);
 
       if (res.status === 200 || res.status === 201) {
-        onSave(updatedUser);
+        const userToSave = res.data ? res.data : updatedUser;
+        onSave(userToSave);
         setIsEditDialogOpen(false);
       } else {
         alert('Ошибка при сохранении пользователя');
       }
     } catch (error) {
-      console.error('Ошибка:', error);
       alert('Ошибка при сохранении пользователя');
     } finally {
       setIsLoading(false);

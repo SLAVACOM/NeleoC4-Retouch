@@ -21,12 +21,12 @@ export class CreateUserDto {
 export class UpdateUserDto {
 	@IsNumber()
 	@Min(0)
-  free?: number;
+  freeGenerationCount?: number;
 
 	@IsNumber()
   id: number
 
 	@IsNumber()
 	@Min(0)
-	paid?: number;
+	paymentGenerationCount?: number;
 }

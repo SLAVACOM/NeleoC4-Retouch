@@ -113,16 +113,17 @@ export default function UsersPage() {
   };
 
   const handleSave = (updatedUser: MyUser) => {
-    setData((prevData) =>
-      prevData
+    setData((prevData) => {
+      const newData = prevData
         ? {
             ...prevData,
-            data: prevData.users.map((user) =>
+            users: prevData.users.map((user) =>
               user.id === updatedUser.id ? updatedUser : user
             )
           }
-        : undefined
-    );
+        : undefined;
+      return newData;
+    });
   };
 
   const handleCreate = (newUser: MyUser) => {

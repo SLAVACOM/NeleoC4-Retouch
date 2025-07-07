@@ -1,9 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
-import { LanguageEnum, User } from '@prisma/client';
-import { console } from 'inspector/promises';
-import { PrismaService } from 'src/prisma.service';
-import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto';
+import { Injectable, NotFoundException } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
+import { LanguageEnum, User } from '@prisma/client'
+import { console } from 'inspector/promises'
+import { PrismaService } from 'src/prisma.service'
+import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto'
 
 @Injectable()
 export class UserService {
@@ -156,11 +156,15 @@ export class UserService {
     const user = await this.prisma.user.update({
       where: { id: data.id },
       data: {
-        freeGenerationCount: data.free || undefined,
-        paymentGenerationCount: data.paid || undefined,
+        freeGenerationCount: data.freeGenerationCount || undefined,
+        paymentGenerationCount: data.paymentGenerationCount || undefined,
       },
     });
-    return user;
+    return JSON.parse(
+      JSON.stringify(user, (_, value) =>
+        typeof value === 'bigint' ? value.toString() : value,
+      ),
+    );;
   }
 
   async deleteUser(id: number) {
