@@ -1041,94 +1041,100 @@ export class BotUpdate {
   }
 
   // Отправка сообщения нескольким пользователям
-  async sentMessageToUsers(
-    message: string,
-    usersId: number[] | undefined,
-    photos: Express.Multer.File[] = [],
-    pinned: boolean = false,
-  ) {
-    if (photos.length > 10) {
-      console.error(
-        'Too many photos to send in a single message. Limit is 10.',
-      );
-      return;
-    }
-    const users = await this.userService.getUsersTelegramId(usersId);
-    const pinnedUpdates: { userId: bigint; messageId: number }[] = [];
+ async sentMessageToUsers(
+  message: string,
+  usersId: number[] | undefined,
+  photos: Express.Multer.File[] = [],
+  pinned: boolean,
+) {
+  if (photos.length > 10) {
+    console.error(
+      'Too many photos to send in a single message. Limit is 10.',
+    );
+    return;
+  }
 
-    for (const user of users) {
-      const userId = Number(user.telegramId);
+  const users = await this.userService.getUsersTelegramId(usersId);
+  const pinnedUpdates: { userId: bigint; messageId: number }[] = [];
 
-      try {
-        if (photos.length === 0) {
-          const sentMessage = await this.sentMessageToUser(message, userId);
+  for (const user of users) {
+    const userId = Number(user.telegramId);
+    console.log(`Sending message to user ${userId}`);
 
-          if (pinned && sentMessage?.message_id) {
-            if (user.pinnedMessages.length > 0) {
-              await this.bot.telegram.unpinChatMessage(
-                userId,
-                user.pinnedMessages[0],
-              );
-            }
+    try {
+      if (photos.length === 0) {
+        const sentMessage = await this.sentMessageToUser(message, userId);
 
-            await this.bot.telegram.pinChatMessage(
+        if (pinned === true && sentMessage?.message_id) {
+          if (user.pinnedMessages.length > 0) {
+            console.log(`
+              Unpinning previous message ${user.pinnedMessages[0]} for user ${userId},
+            `);
+            await this.bot.telegram.unpinChatMessage(
               userId,
-              sentMessage.message_id,
-              {
-                disable_notification: true,
-              },
+              user.pinnedMessages[0],
             );
-
-            pinnedUpdates.push({
-              userId: BigInt(user.telegramId),
-              messageId: sentMessage.message_id,
-            });
           }
-        } else {
-          const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
-            type: 'photo',
-            media: { source: photo.buffer },
-            caption: index === 0 ? message : undefined,
-          }));
 
-          const sentMessages = await this.bot.telegram.sendMediaGroup(
-            userId,
-            mediaGroup,
-          );
+          console.log(`
+            Pinning new message ${sentMessage.message_id} for user ${userId},
+          `);
+          await this.bot.telegram.pinChatMessage(userId, sentMessage.message_id, {
+            disable_notification: true,
+          });
 
-          // Пин первого сообщения из группы
-          if (pinned) {
-            const pinMessage = await this.bot.telegram.pinChatMessage(
-              userId,
-              sentMessages[0].message_id,
-              {
-                disable_notification: true,
-              },
-            );
-
-            if (user.pinnedMessages.length > 0) {
-              await this.bot.telegram.deleteMessage(
-                userId,
-                user.pinnedMessages[0],
-              );
-            }
-            pinnedUpdates.push({
-              userId: BigInt(user.telegramId),
-              messageId: sentMessages[0].message_id,
-            });
-          }
+          pinnedUpdates.push({
+            userId: BigInt(user.telegramId),
+            messageId: sentMessage.message_id,
+          });
         }
-      } catch (error) {
-        Logger.error(
-          `Failed to send message to user ${userId}: ${error.message}`,
+      } else {
+        const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
+          type: 'photo',
+          media: { source: photo.buffer },
+          caption: index === 0 ? message : undefined,
+        }));
+
+        const sentMessages = await this.bot.telegram.sendMediaGroup(
+          userId,
+          mediaGroup,
         );
+
+        if (pinned === true && sentMessages?.length > 0) {
+          const messageIdToPin = sentMessages[0].message_id;
+
+          console.log(`
+            Pinning first photo message ${messageIdToPin} for user ${userId},
+          `);
+          await this.bot.telegram.pinChatMessage(userId, messageIdToPin, {
+            disable_notification: true,
+          });
+
+          if (user.pinnedMessages.length > 0) {
+            console.log(`
+              Deleting previous pinned message ${user.pinnedMessages[0]} for user ${userId},
+            `);
+            await this.bot.telegram.deleteMessage(
+              userId,
+              user.pinnedMessages[0],
+            );
+          }
+
+          pinnedUpdates.push({
+            userId: BigInt(user.telegramId),
+            messageId: messageIdToPin,
+          });
+        }
       }
-    }
-    if (pinnedUpdates.length > 0) {
-      await this.userService.addPinnedMessage(pinnedUpdates);
+    } catch (error: any) {
+      console.error(`Failed to send message to user ${userId}: ${error.message}`);
     }
   }
 
+  if (pinnedUpdates.length > 0) {
+    await this.userService.addPinnedMessage(pinnedUpdates);
+  }
+}
   // Отправка сообщения пользователю
   async sentMessageToUser(message: string, userId: number) {
     try {

@@ -27,9 +27,12 @@ export class BotController {
     @UploadedFiles() photos: Express.Multer.File[],
     @Body('message') message: string,
     @Body('usersId') usersId: number[],
-    @Body('pinned') pinned: boolean = false,
+    @Body('pinned') pinnedRaw: any,
   ) {
-    Logger.log(`Sending message to users, ${message}, usersId: ${usersId}, pinned: ${pinned}, photos: ${photos.length}`);
+    Logger.log(`Sending message to users, ${message}, usersId: ${usersId}, pinned: ${pinnedRaw}, photos: ${photos.length}`);
+    
+      const pinned: boolean = pinnedRaw === 'true' || pinnedRaw === true;
+
     return await this.bot.sentMessageToUsers(message, usersId, photos, pinned);
   }
 }
