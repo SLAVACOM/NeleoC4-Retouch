@@ -18,5 +18,22 @@ export const DiscountsService = {
       data: { discountPercentage: newDiscount }
     });
     return res;
+  },
+
+  async getGenerationCount(): Promise<number> {
+    const res = await axiosClassic({
+      method: 'GET',
+      url: `freeGenerationCount`
+    });
+    return +res.data;
+  },
+
+  async updateGenerationCount(newCount: number) {
+    const res = await axiosClassic({
+      method: 'PUT',
+      url: `freeGenerationCount`,
+      data: { count: newCount }
+    });
+    return res;
   }
 };

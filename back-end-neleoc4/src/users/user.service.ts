@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common'
-import { Cron } from '@nestjs/schedule'
-import { LanguageEnum, User } from '@prisma/client'
-import { console } from 'inspector/promises'
-import { PrismaService } from 'src/prisma.service'
-import { CreateUserDto, UpdateUserDto } from './dto/create-user.dto'
-
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { LanguageEnum, User } from '@prisma/client';
+import { Cache } from 'cache-manager';
+import { console } from 'inspector/promises';
+import { PrismaService } from 'src/prisma.service';
+import {
+  CreateUserDto,
+  UpdateCountDto,
+  UpdateUserDto,
+} from './dto/create-user.dto';
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+  ) {}
 
   async create(data: CreateUserDto) {
     const user = await this.prisma.user.create({
@@ -15,6 +23,8 @@ export class UserService {
         telegramId: data.telegramId,
         telegramFullName: data.fullName,
         telegramUsername: data.username,
+        freeGenerationCount:
+          data.freeGenerationCount || (await this.getGenerationPerDayCount()),
       },
     });
 
@@ -164,7 +174,7 @@ export class UserService {
       JSON.stringify(user, (_, value) =>
         typeof value === 'bigint' ? value.toString() : value,
       ),
-    );;
+    );
   }
 
   async deleteUser(id: number) {
@@ -214,13 +224,13 @@ export class UserService {
           console.log('login');
           whereClause.telegramUsername = {
             contains: searchQuery,
-            mode: 'insensitive', // Case-insensitive search
+            mode: 'insensitive',
           };
           break;
         case 'name':
           whereClause.telegramFullName = {
             contains: searchQuery,
-            mode: 'insensitive', // Case-insensitive search
+            mode: 'insensitive',
           };
           break;
       }
@@ -305,7 +315,9 @@ export class UserService {
   @Cron('0 0 0 * * *')
   private async updateAllUserFreeGenerations() {
     await this.prisma.user.updateMany({
-      data: { freeGenerationCount: 2 },
+      data: {
+        freeGenerationCount: await this.getGenerationPerDayCount(),
+      },
     });
   }
 
@@ -314,5 +326,48 @@ export class UserService {
       where: { telegramId },
       data: { lastActiveAt: new Date() },
     });
+  }
+
+  async getGenerationPerDayCount(): Promise<number> {
+    const cached = await this.cacheManager.get<number>('generationCount');
+    if (cached !== null && cached !== undefined) return cached;
+
+    let countDb = await this.prisma.generationCount.findUnique({
+      where: {
+        id: 1,
+      },
+    });
+
+    if (!countDb) {
+      countDb = await this.prisma.generationCount.create({
+        data: { count: 0 },
+      });
+    }
+
+    const count = countDb.count;
+
+    await this.cacheManager.set('generationCount', count, 3600); // Кеш на 1 час
+    return count;
+  }
+
+  async updateGenerationPerDayCount(count: UpdateCountDto): Promise<void> {
+    const old = await this.getGenerationPerDayCount();
+
+    if (old === count.count) {
+      console.log('No change in generation count, skipping update');
+      return;
+    }
+
+    console.log('Updating generation count to:', count.count);
+
+    // Сначала обновляем в базе данных
+    await this.prisma.generationCount.update({
+      where: { id: 1 },
+      data: { count: count.count },
+    });
+
+    // Затем инвалидируем кеш и устанавливаем новое значение
+    await this.cacheManager.del('generationCount');
+    await this.cacheManager.set('generationCount', count.count, 3600); // Кеш на 1 час
   }
 }

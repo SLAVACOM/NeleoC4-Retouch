@@ -5,10 +5,11 @@ import { SupportService } from 'src/support/support.service';
 import { UserService } from 'src/users/user.service';
 import { GenerationController } from './generation.controller';
 import { GenerationService } from './generation.service';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   controllers: [GenerationController],
-  imports: [PromoCodeModule],
+  imports: [PromoCodeModule, CacheModule.register()],
   providers: [PrismaService, GenerationService, UserService, SupportService],
   exports: [GenerationService],
 })

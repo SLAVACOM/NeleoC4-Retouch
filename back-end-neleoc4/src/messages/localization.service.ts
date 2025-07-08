@@ -16,7 +16,7 @@ export class LocalizationService {
     if (cached) return cached;
 
     const message = await this.prisma.messages.findUnique({
-      where: { messageName },
+      where: { messageName: messageName },
     });
 
     if (!message) {
@@ -46,7 +46,6 @@ export class LocalizationService {
   }
 
   async addMessagesFromJson(messages: JSON) {
-
     let lines = 0;
     const data = Object.entries(messages).map(([key, value]) => {
       lines++;
@@ -77,7 +76,7 @@ export class LocalizationService {
     if (cached) return cached;
 
     const messages = await this.prisma.messages.findMany({
-      orderBy: { updatedAt: 'asc' },
+      orderBy: { messageName: 'desc' },
     });
     await this.cacheManager.set(cacheKey, messages);
 
@@ -87,15 +86,18 @@ export class LocalizationService {
   async updateMessage(messageName: string, messageText: string): Promise<void> {
     await this.getMessage(messageName);
 
-    if (messageText === '') throw new Error(`Сообщение не может быть пустым`);
+    if (messageText.trim() === '')
+      throw new Error(`Сообщение не может быть пустым`);
 
+    await this.getMessage(messageName);
 
     await this.prisma.messages.update({
       where: { messageName },
       data: { messageText },
     });
 
-    await this.cacheManager.del(`message:${messageName}`);
+    await this.cacheManager.del('messages:all');
+    await this.cacheManager.set(`message:${messageName}`, messageText);
   }
 
   async updateMessagesRuAndEn(

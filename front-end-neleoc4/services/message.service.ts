@@ -35,5 +35,44 @@ export const MessageService = {
       data: { userId, message: mess }
     });
     return res;
+  },
+
+  async getMessages() {
+    const res = await axiosClassic({
+      method: 'GET',
+      url: 'messages/localization'
+    });
+    return res;
+  },
+
+  async createMessage(message: Partial<IMessage>) {
+    const res = await axiosClassic({
+      method: 'POST',
+      url: 'messages/localization',
+      data: message
+    });
+    return res;
+  },
+
+  async updateMessage(message: Partial<IMessage>) {
+    const res = await axiosClassic({
+      method: 'PUT',
+      url: `messages/localization`,
+      data: message
+    });
+    return res;
   }
 };
+export interface IMessage {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  messageName: string;
+  messageText: string;
+}
+
+export interface GetMessages {
+  messages: IMessage[];
+  count: number;
+  totalPages: number;
+}

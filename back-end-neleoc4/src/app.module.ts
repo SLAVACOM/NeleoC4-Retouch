@@ -16,6 +16,7 @@ import { PrismaService } from './prisma.service';
 import { ProductsModule } from './products/products.module';
 import { PromoCodeModule } from './promocodes/promocode.module';
 import { RetouchModule } from './retouch/retouch.module';
+import { StatisticsModule } from './statistics/statistics.module';
 import { SupportModule } from './support/support.module';
 import { UserModule } from './users/user.module';
 import { VialsCollectionModule as VialsModule } from './vials/vials.module';
@@ -29,14 +30,15 @@ import { VialsCollectionModule as VialsModule } from './vials/vials.module';
         console.log('Connecting to Redis at:', redisUrl);
 
         return {
-          store: redisStore, 
+          store: redisStore,
           options: {
-            url: redisUrl, 
+            url: redisUrl,
           },
           ttl: 0,
         };
       },
     }),
+    StatisticsModule,
     AuthModule,
     UserModule,
     PaymentsModule,

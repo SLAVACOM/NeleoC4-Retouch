@@ -1,35 +1,39 @@
 import Modal from '@/components/Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 import { useEffect, useState } from 'react';
+import { IMessage } from 'services/message.service';
 
 interface EditProductModalProps {
   isOpen: boolean;
-  message?: {
-    id?: number;
-    name: string;
-    text: string;
-  };
+  message?: IMessage | null;
   onClose: () => void;
   onSave: (updatedMessage: any) => void;
 }
 
 export default function EditMessageModal({
   isOpen,
-  message = {
-    id: 0,
-    name: '',
-    text: ''
-  },
+  message = null,
   onClose,
   onSave
 }: EditProductModalProps) {
-  const [editedMessage, setEditedMessage] = useState(message);
+  const [editedMessage, setEditedMessage] = useState<Partial<IMessage>>({
+    messageName: '',
+    messageText: ''
+  });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    setEditedMessage(message || { name: '', text: '' });
+    if (message) {
+      setEditedMessage(message);
+    } else {
+      setEditedMessage({
+        messageName: '',
+        messageText: ''
+      });
+    }
     setErrors({});
   }, [message]);
 
@@ -43,8 +47,12 @@ export default function EditMessageModal({
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    if (editedMessage.name) newErrors.name = 'Название обязательно';
-    if (!editedMessage.text) newErrors.text = 'Текст обязателен';
+    if (!editedMessage.messageName || editedMessage.messageName.trim() === '') {
+      newErrors.messageName = 'Название обязательно';
+    }
+    if (!editedMessage.messageText || editedMessage.messageText.trim() === '') {
+      newErrors.messageText = 'Текст обязателен';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -69,11 +77,11 @@ export default function EditMessageModal({
           <Input
             type="text"
             placeholder="Название"
-            value={editedMessage.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
+            value={editedMessage.messageName || ''}
+            onChange={(e) => handleInputChange('messageName', e.target.value)}
           />
-          {errors.name && (
-            <p className="text-sm text-red-500 mt-1">{errors.name}</p>
+          {errors.messageName && (
+            <p className="text-sm text-red-500 mt-1">{errors.messageName}</p>
           )}
         </div>
 
@@ -81,12 +89,16 @@ export default function EditMessageModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Текст сообщения
           </label>
-          <Input
-            type="text"
-            placeholder="Текст"
-            value={editedMessage.text}
-            onChange={(e) => handleInputChange('text', e.target.value)}
+          <Textarea
+            placeholder="Текст сообщения"
+            value={editedMessage.messageText || ''}
+            onChange={(e) => handleInputChange('messageText', e.target.value)}
+            rows={5}
+            className="w-full"
           />
+          {errors.messageText && (
+            <p className="text-sm text-red-500 mt-1">{errors.messageText}</p>
+          )}
         </div>
 
         <div className="flex justify-end">

@@ -175,9 +175,12 @@ model BaseSettings {
 
 model Discount {
   id                 Int @id @default(autoincrement())
-  discountPercentage Int @default(0) @map("discount_percentage") // Сумма скидки
+  discountPercentage Int @default(0) @map("discount_percentage") 
 }
-
+model GenerationCount {
+  id                 Int @id @default(autoincrement())
+  count Int @default(0) @map("generation_count") 
+}
 model Settings {
   id Int @id @default(autoincrement())
 

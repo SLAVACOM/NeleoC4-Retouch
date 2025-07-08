@@ -68,12 +68,12 @@ export class MessagesController {
   }
 
   @Put()
-  async updateMessage(@Body() { name, message = '' }) {
+  async updateMessage(@Body() { messageName, messageText = '' }) {
     Logger.log(
-      `PUT - /messages/localization Request\nname: ${name}\nmessage: ${message}`,
+      `PUT - /messages/localization Request\nname: ${messageName}\nmessage: ${messageText}`,
     );
 
-    const response = await this.messagesService.updateMessage(name, message);
+    const response = await this.messagesService.updateMessage(messageName, messageText);
     Logger.log(
       `PUT - /messages/localization Response\n` + JSON.stringify(response),
     );

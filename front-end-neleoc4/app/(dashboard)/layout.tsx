@@ -1,9 +1,10 @@
 'use client';
-import { Home, LogOut, PanelLeft, Users2 } from 'lucide-react';
+import { LogOut, PanelLeft, Users2 } from 'lucide-react';
+import { BsGraphUp } from 'react-icons/bs';
 
 import { MdOutlinePayment } from 'react-icons/md';
 
-import { BiMessageAdd } from 'react-icons/bi';
+import { BiMessageAdd, BiMessageEdit } from 'react-icons/bi';
 import { LiaVialSolid } from 'react-icons/lia';
 import { TbSettingsDollar } from 'react-icons/tb';
 
@@ -77,12 +78,20 @@ function DesktopNav({ onLogout }: { onLogout: () => void }) {
           <BiMessageAdd className="h-5 w-5" />
         </NavItem>
 
+        <NavItem href="/messages" label="Редактировать сообщения">
+          <BiMessageEdit className="h-5 w-5" />
+        </NavItem>
+
         <NavItem href="/discount" label="Настройка скидки">
           <TbSettingsDollar className="h-5 w-5" />
         </NavItem>
 
         <NavItem href="/retouchSettings" label="Настройка ретуши">
           <IoSettingsOutline className="h-5 w-5" />
+        </NavItem>
+
+        <NavItem href="/statistics" label="Статистика">
+          <BsGraphUp className="h-5 w-5" />
         </NavItem>
 
         <NavItem href="/payments" label="Платежи">
@@ -171,6 +180,15 @@ function MobileNav({ onLogout }: { onLogout: () => void }) {
           </Link>
 
           <Link
+            href="/messages"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            onClick={handleClose}
+          >
+            <BiMessageEdit className="h-5 w-5" />
+            Редактировать сообщения
+          </Link>
+
+          <Link
             href="/discount"
             className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
             onClick={handleClose}
@@ -186,6 +204,15 @@ function MobileNav({ onLogout }: { onLogout: () => void }) {
           >
             <IoSettingsOutline className="h-5 w-5" />
             Настройка ретуши
+          </Link>
+
+          <Link
+            href="/statistics"
+            className="flex items-center gap-4 px-2.5 text-muted-foreground hover:text-foreground"
+            onClick={handleClose}
+          >
+            <BsGraphUp className="h-5 w-5" />
+            Статистика
           </Link>
 
           <Link
