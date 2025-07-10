@@ -1,12 +1,5 @@
 import { GenerationType } from '@prisma/client';
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsString, Max } from 'class-validator';
 
 export class SendRetouchDto {
   file: Buffer;
@@ -31,4 +24,8 @@ export class SendRetouchDto {
 
   @IsEnum(GenerationType)
   type: GenerationType;
+
+  @IsNumber()
+  @IsOptional()
+  generationNumber?: number;
 }

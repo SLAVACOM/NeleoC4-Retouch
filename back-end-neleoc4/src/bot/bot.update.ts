@@ -47,6 +47,7 @@ export class BotUpdate {
   private maxVialsSelected = new Map<number, number>();
   private paymentMessageId = new Map<number, number>();
   private progressMessageId = new Map<string, number>();
+  private categorySelectionMessageId = new Map<number, number>();
 
   constructor(
     @InjectBot() private readonly bot: Telegraf<Context>,
@@ -219,6 +220,8 @@ export class BotUpdate {
               ? await this.settingsService.getDefaultSettings()
               : await this.settingsService.getUserSettings(user.id),
           type,
+          generationNumber:
+            user.paymentGenerationCount + user.freeGenerationCount, // Added generation number
         });
 
         const progressBar = await getProgressBar(0);
@@ -238,7 +241,7 @@ export class BotUpdate {
         await this.sentLocalizedSupportMessage(ctx, 'photo_processed');
 
         if (type === GenerationType.PAID)
-          await this.sendVialSelection(ctx, user, retouchId);
+          await this.sendPaginatedVialSelection(ctx, user, retouchId);
         else {
           await this.sentLocalizedSupportMessage(ctx, 'u_need_add_balance');
           const url = `${this.url}getFile/${retouchId}`;
@@ -262,39 +265,89 @@ export class BotUpdate {
     }
   }
 
-  // отправка кнопок для выбора флаконов
-  private async sendVialSelection(ctx: Context, user: User, retouchId: string) {
+  @Command('test')
+  private async askAddVials(ctx: Context) {
     if (!ctx.from?.id) return;
 
     this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
 
-    const selectedVials = await this.userService.getSelectedVialsId(user.id);
-    const allVials = await this.vialsService.getAll();
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
 
-    const keyboard = allVials.map((vial) => {
-      const isSelected = selectedVials.includes(vial.id);
-      return [
+    const keyboard: InlineKeyboardButton[][] = [
+      [
         Markup.button.callback(
-          `${isSelected ? '✅' : '➕'} ${vial.name}`,
-          `choiceVial_${vial.id}_${retouchId}`,
+          await this.getLocalizedSupportMessage(user.language, 'no'),
+          'choiceAddVials_No',
         ),
-      ];
-    });
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'yes'),
+          'choiceAddVials_Yes',
+        ),
+      ],
+    ];
 
+    const sendMessage = await ctx.reply(
+      await this.getLocalizedSupportMessage(user.language, 'AskAddVials'),
+      {
+        reply_markup: Markup.inlineKeyboard(keyboard).reply_markup,
+      },
+    );
+  }
+
+  @Action(/choiceAddVials_.+/)
+  private async ActionAddVials(ctx: Context) {
+    if (!ctx.from) return;
+    ctx.deleteMessage();
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+
+    const [_, choice, retouchId] = callbackQuery.data.split('_');
+    if (choice === 'No') await this.askForWatermark(ctx, false);
+    else if (choice === 'Yes')
+      await this.sendVialCategoriesSelection(ctx, user, retouchId);
+  }
+
+  // отправка кнопок для выбора флаконов
+  private async sendVialCategoriesSelection(
+    ctx: Context,
+    user: User,
+    retouchId: string,
+  ) {
+    if (!ctx.from?.id) return;
+
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const categories = await this.vialsService.getAllCategories();
+
+    const keyboard = categories.map((category) => [
+      Markup.button.callback(
+        category.name,
+        `choiceVialCategory_${category.id}_${retouchId}`,
+      ),
+    ]);
     keyboard.push([
       Markup.button.callback(
-        selectedVials.length > 0
-          ? await this.getLocalizedSupportMessage(user.language, 'finish')
-          : await this.getLocalizedSupportMessage(
-              user.language,
-              'continue_without_vials',
-            ),
+        await this.getLocalizedSupportMessage(
+          user.language,
+          'continue_without_vials',
+        ),
         `goToChoiceWatermark_${retouchId}`,
       ),
     ]);
 
     const sendMessage = await ctx.reply(
-      await this.getLocalizedSupportMessage(user.language, 'choose_vials'),
+      await this.getLocalizedSupportMessage(
+        user.language,
+        'choose_vial_category',
+      ),
       {
         reply_markup: Markup.inlineKeyboard(keyboard).reply_markup,
       },
@@ -302,6 +355,122 @@ export class BotUpdate {
 
     if (sendMessage.message_id !== undefined)
       this.vialSelectionMessageId.set(user.id, sendMessage.message_id);
+  }
+
+  private async sendPaginatedCategorySelection(
+    ctx: Context,
+    user: User,
+    retouchId: string,
+    page: number = 1,
+    perPage: number = 5,
+  ) {
+    if (!ctx.from?.id) return;
+
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const allCategories = await this.vialsService.getAllCategories();
+    const paginatedCategories = allCategories.slice(
+      (page - 1) * perPage,
+      page * perPage,
+    );
+
+    const totalPages = Math.ceil(allCategories.length / perPage);
+
+    const keyboard = paginatedCategories.map((category) => [
+      Markup.button.callback(
+        category.name,
+        `choiceVialCategory_${retouchId}_${category.id}`,
+      ),
+    ]);
+
+    const navigationButtons = [
+      Markup.button.callback(
+        await this.getLocalizedSupportMessage(user.language, 'previous_page'),
+        `paginateCategories_${retouchId}_${page - 1}`,
+        page <= 1 ? false : undefined,
+      ),
+      Markup.button.callback(`${page}/${totalPages}`, 'current_page', true),
+      Markup.button.callback(
+        await this.getLocalizedSupportMessage(user.language, 'next_page'),
+        `paginateCategories_${retouchId}_${page + 1}`,
+        page >= totalPages ? false : undefined,
+      ),
+    ];
+
+    keyboard.push(navigationButtons);
+
+    const sendMessage = await ctx.reply(
+      await this.getLocalizedSupportMessage(user.language, 'choose_category'),
+      {
+        reply_markup: Markup.inlineKeyboard(keyboard).reply_markup,
+      },
+    );
+
+    if (sendMessage.message_id !== undefined)
+      this.categorySelectionMessageId.set(user.id, sendMessage.message_id);
+  }
+
+  @Action(/paginateCategories_.+/)
+  async paginateCategories(@Ctx() ctx: Context) {
+    if (!ctx.from) return;
+    ctx.deleteMessage();
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+    const [_, retouchId, page] = callbackQuery.data.split('_');
+
+    const allCategories = await this.vialsService.getAllCategories();
+    const perPage = 5;
+    const paginatedCategories = allCategories.slice(
+      (+page - 1) * perPage,
+      +page * perPage,
+    );
+    const totalPages = Math.ceil(allCategories.length / perPage);
+
+    const keyboard = paginatedCategories.map((category) => [
+      Markup.button.callback(
+        category.name,
+        `choiceVialCategory_${category.id}_${retouchId}`,
+      ),
+    ]);
+
+    if (+page > 1) {
+      keyboard.push([
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'previous_page'),
+          `paginateCategories_${retouchId}_${+page - 1}`,
+        ),
+      ]);
+    }
+
+    keyboard.push([
+      Markup.button.callback(`${+page}/${totalPages}`, 'current_page', true),
+    ]);
+
+    if (+page < totalPages) {
+      keyboard.push([
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'next_page'),
+          `paginateCategories_${retouchId}_${+page + 1}`,
+        ),
+      ]);
+    }
+
+    const message = await ctx.reply(
+      await this.getLocalizedSupportMessage(user.language, 'choose_category'),
+      {
+        reply_markup: Markup.inlineKeyboard(keyboard).reply_markup,
+      },
+    );
+
+    if (message.message_id) {
+      this.categorySelectionMessageId.set(user.id, message.message_id);
+    }
   }
 
   @Command('buy')
@@ -545,90 +714,6 @@ export class BotUpdate {
     await this.buy(ctx);
   }
 
-  @Action(/choiceVial_.+/)
-  async toggleVial(@Ctx() ctx: Context) {
-    if (!ctx.from) return;
-    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
-
-    const user = await this.userService.getUserByTelegramId(
-      BigInt(ctx.from.id),
-    );
-
-    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
-
-    const [_, vialId, retouchId] = callbackQuery.data.split('_');
-
-    let selectedVials = await this.userService.getSelectedVialsId(user.id);
-
-    if (selectedVials.includes(+vialId)) {
-      await this.userService.removeSelectedVial(user.id, +vialId);
-      selectedVials = selectedVials.filter((id) => id !== +vialId);
-    } else {
-      if (
-        selectedVials.length >= (Number(process.env.MAX_VIALS_SELECTED) || 2)
-      ) {
-        if (this.maxVialsSelected.has(user.id)) {
-          try {
-            await this.bot.telegram.deleteMessage(
-              Number(user.telegramId),
-              this.maxVialsSelected.get(user.id)!,
-            );
-          } catch (e) {
-            Logger.error(
-              `Error deleting max vials message to user:${user.telegramId} \n${e}`,
-            );
-          }
-        }
-        const message = await this.sentLocalizedSupportMessage(
-          ctx,
-          'max_vials_selected',
-        );
-        if (message?.message_id)
-          this.maxVialsSelected.set(user.id, message.message_id);
-
-        return;
-      }
-      this.userService.addSelectedVial(user.id, +vialId);
-      selectedVials.push(+vialId);
-    }
-
-    const allVials = await this.vialsService.getAll();
-
-    const keyboard = allVials.map((vial) => {
-      const isSelected = selectedVials.includes(vial.id);
-      return [
-        Markup.button.callback(
-          `${isSelected ? '✅' : '➕'} ${vial.name}`,
-          `choiceVial_${vial.id}_${retouchId}`,
-        ),
-      ];
-    });
-
-    keyboard.push([
-      Markup.button.callback(
-        selectedVials.length > 0
-          ? await this.getLocalizedSupportMessage(user.language, 'finish')
-          : await this.getLocalizedSupportMessage(
-              user.language,
-              'continue_without_vials',
-            ),
-        `goToChoiceWatermark_${retouchId}`,
-      ),
-    ]);
-
-    const messageId = this.vialSelectionMessageId.get(user.id);
-    if (messageId) {
-      if (!ctx.chat) return;
-      await ctx.telegram.editMessageReplyMarkup(
-        ctx.chat.id,
-        +messageId,
-        undefined, // Не меняем inline_message_id
-        { inline_keyboard: keyboard },
-      );
-      return; // Редактируем и выходим, не отправляя новое сообщение
-    }
-    await this.sendVialSelection(ctx, user, retouchId);
-  }
 
   // Получение информации о поддержке
   @Command('support')
@@ -666,7 +751,7 @@ export class BotUpdate {
 
   // Переход к выбору водяного знака
   @Action(/goToChoiceWatermark_.+/)
-  async askForWatermark(@Ctx() ctx: Context) {
+  async askForWatermark(@Ctx() ctx: Context, addVials: boolean = true) {
     if (!ctx.from) return;
     this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
 
@@ -770,7 +855,7 @@ export class BotUpdate {
     const buttons = await Promise.all(
       this.modes.map(async ({ key, id }) => [
         Markup.button.callback(
-          `${await this.getLocalizedSupportMessage(user.language, key)} ${settingsId === id ? '✅ ' : ''}`,
+          `${await this.getLocalizedSupportMessage(user.language, key)} ${settingsId === id ? '✅' : ''}`,
           key,
         ),
       ]),
@@ -859,7 +944,6 @@ export class BotUpdate {
     }
   }
 
-  // Отправка фото пользователю
   async sendPhotoToUserB(
     userId: number,
     buffer: Buffer,
@@ -884,7 +968,6 @@ export class BotUpdate {
     }
   }
 
-  // Получение информации о пользователе
   @Command('generations')
   async addGenerations(ctx: Context) {
     if (ctx.from?.id !== undefined) {
@@ -1041,100 +1124,106 @@ export class BotUpdate {
   }
 
   // Отправка сообщения нескольким пользователям
- async sentMessageToUsers(
-  message: string,
-  usersId: number[] | undefined,
-  photos: Express.Multer.File[] = [],
-  pinned: boolean,
-) {
-  if (photos.length > 10) {
-    console.error(
-      'Too many photos to send in a single message. Limit is 10.',
-    );
-    return;
-  }
+  async sentMessageToUsers(
+    message: string,
+    usersId: number[] | undefined,
+    photos: Express.Multer.File[] = [],
+    pinned: boolean,
+  ) {
+    if (photos.length > 10) {
+      console.error(
+        'Too many photos to send in a single message. Limit is 10.',
+      );
+      return;
+    }
 
-  const users = await this.userService.getUsersTelegramId(usersId);
-  const pinnedUpdates: { userId: bigint; messageId: number }[] = [];
+    const users = await this.userService.getUsersTelegramId(usersId);
+    const pinnedUpdates: { userId: bigint; messageId: number }[] = [];
 
-  for (const user of users) {
-    const userId = Number(user.telegramId);
-    console.log(`Sending message to user ${userId}`);
+    for (const user of users) {
+      const userId = Number(user.telegramId);
+      console.log(`Sending message to user ${userId}`);
 
-    try {
-      if (photos.length === 0) {
-        const sentMessage = await this.sentMessageToUser(message, userId);
+      try {
+        if (photos.length === 0) {
+          const sentMessage = await this.sentMessageToUser(message, userId);
 
-        if (pinned === true && sentMessage?.message_id) {
-          if (user.pinnedMessages.length > 0) {
-            console.log(`
+          if (pinned === true && sentMessage?.message_id) {
+            if (user.pinnedMessages.length > 0) {
+              console.log(`
               Unpinning previous message ${user.pinnedMessages[0]} for user ${userId},
             `);
-            await this.bot.telegram.unpinChatMessage(
-              userId,
-              user.pinnedMessages[0],
-            );
-          }
+              await this.bot.telegram.unpinChatMessage(
+                userId,
+                user.pinnedMessages[0],
+              );
+            }
 
-          console.log(`
+            console.log(`
             Pinning new message ${sentMessage.message_id} for user ${userId},
           `);
-          await this.bot.telegram.pinChatMessage(userId, sentMessage.message_id, {
-            disable_notification: true,
-          });
+            await this.bot.telegram.pinChatMessage(
+              userId,
+              sentMessage.message_id,
+              {
+                disable_notification: true,
+              },
+            );
 
-          pinnedUpdates.push({
-            userId: BigInt(user.telegramId),
-            messageId: sentMessage.message_id,
-          });
-        }
-      } else {
-        const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
-          type: 'photo',
-          media: { source: photo.buffer },
-          caption: index === 0 ? message : undefined,
-        }));
+            pinnedUpdates.push({
+              userId: BigInt(user.telegramId),
+              messageId: sentMessage.message_id,
+            });
+          }
+        } else {
+          const mediaGroup: InputMediaPhoto[] = photos.map((photo, index) => ({
+            type: 'photo',
+            media: { source: photo.buffer },
+            caption: index === 0 ? message : undefined,
+          }));
 
-        const sentMessages = await this.bot.telegram.sendMediaGroup(
-          userId,
-          mediaGroup,
-        );
+          const sentMessages = await this.bot.telegram.sendMediaGroup(
+            userId,
+            mediaGroup,
+          );
 
-        if (pinned === true && sentMessages?.length > 0) {
-          const messageIdToPin = sentMessages[0].message_id;
+          if (pinned === true && sentMessages?.length > 0) {
+            const messageIdToPin = sentMessages[0].message_id;
 
-          console.log(`
+            console.log(`
             Pinning first photo message ${messageIdToPin} for user ${userId},
           `);
-          await this.bot.telegram.pinChatMessage(userId, messageIdToPin, {
-            disable_notification: true,
-          });
+            await this.bot.telegram.pinChatMessage(userId, messageIdToPin, {
+              disable_notification: true,
+            });
 
-          if (user.pinnedMessages.length > 0) {
-            console.log(`
+            if (user.pinnedMessages.length > 0) {
+              console.log(`
               Deleting previous pinned message ${user.pinnedMessages[0]} for user ${userId},
             `);
-            await this.bot.telegram.deleteMessage(
-              userId,
-              user.pinnedMessages[0],
-            );
-          }
+              await this.bot.telegram.deleteMessage(
+                userId,
+                user.pinnedMessages[0],
+              );
+            }
 
-          pinnedUpdates.push({
-            userId: BigInt(user.telegramId),
-            messageId: messageIdToPin,
-          });
+            pinnedUpdates.push({
+              userId: BigInt(user.telegramId),
+              messageId: messageIdToPin,
+            });
+          }
         }
+      } catch (error: any) {
+        console.error(
+          `Failed to send message to user ${userId}: ${error.message}`,
+        );
       }
-    } catch (error: any) {
-      console.error(`Failed to send message to user ${userId}: ${error.message}`);
+    }
+
+    if (pinnedUpdates.length > 0) {
+      await this.userService.addPinnedMessage(pinnedUpdates);
     }
   }
-
-  if (pinnedUpdates.length > 0) {
-    await this.userService.addPinnedMessage(pinnedUpdates);
-  }
-}
   // Отправка сообщения пользователю
   async sentMessageToUser(message: string, userId: number) {
     try {
@@ -1280,6 +1369,143 @@ export class BotUpdate {
     } catch (e) {
       console.error('Error in sendVideo', e);
     }
+  }
+
+  private async sendPaginatedVialSelection(
+    ctx: Context,
+    user: User,
+    retouchId: string,
+    categoryId?: number,
+    page: number = 1,
+    perPage: number = 5,
+  ) {
+    if (!ctx.from?.id) return;
+
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const selectedVials = await this.userService.getSelectedVialsId(user.id);
+    const allVials = categoryId
+      ? await this.vialsService.getVialsByCategory(categoryId)
+      : await this.vialsService.getAll();
+
+    const paginatedVials = allVials.slice((page - 1) * perPage, page * perPage);
+
+    const keyboard = paginatedVials.map((vial) => {
+      const isSelected = selectedVials.includes(vial.id);
+      return [
+        Markup.button.callback(
+          `${isSelected ? '✅' : '➕'} ${vial.name}`,
+          `choiceVial_${vial.id}_${retouchId}`,
+        ),
+      ];
+    });
+
+    if (page > 1) {
+      keyboard.push([
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'previous_page'),
+          `paginateVials_${retouchId}_${categoryId}_${page - 1}`,
+        ),
+      ]);
+    }
+
+    if (page * perPage < allVials.length) {
+      keyboard.push([
+        Markup.button.callback(
+          await this.getLocalizedSupportMessage(user.language, 'next_page'),
+          `paginateVials_${retouchId}_${categoryId}_${page + 1}`,
+        ),
+      ]);
+    }
+
+    keyboard.push([
+      Markup.button.callback(
+        selectedVials.length > 0
+          ? await this.getLocalizedSupportMessage(user.language, 'finish')
+          : await this.getLocalizedSupportMessage(
+              user.language,
+              'continue_without_vials',
+            ),
+        `goToChoiceWatermark_${retouchId}`,
+      ),
+    ]);
+
+    const sendMessage = await ctx.reply(
+      await this.getLocalizedSupportMessage(user.language, 'choose_vials'),
+      {
+        reply_markup: Markup.inlineKeyboard(keyboard).reply_markup,
+      },
+    );
+
+    if (sendMessage.message_id !== undefined)
+      this.vialSelectionMessageId.set(user.id, sendMessage.message_id);
+  }
+
+  @Action(/paginateVials_.+/)
+  async paginateVials(@Ctx() ctx: Context) {
+    if (!ctx.from) return;
+    ctx.deleteMessage();
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+    const [_, retouchId, categoryId, page] = callbackQuery.data.split('_');
+
+    await this.sendPaginatedVialSelection(
+      ctx,
+      user,
+      retouchId,
+      categoryId ? +categoryId : undefined,
+      +page,
+    );
+  }
+
+  @Action(/choiceVialCategory_.+/)
+  async handleCategorySelection(@Ctx() ctx: Context) {
+    if (!ctx.from) return;
+    ctx.deleteMessage();
+    this.userService.updateUserLastActiveDate(BigInt(ctx.from.id));
+
+    const user = await this.userService.getUserByTelegramId(
+      BigInt(ctx.from.id),
+    );
+    if (!user) return;
+
+    const callbackQuery = ctx.callbackQuery as CallbackQuery.DataQuery;
+    const [_, categoryId, retouchId] = callbackQuery.data.split('_');
+
+    if (!categoryId) {
+      console.error(
+        'Category ID is missing in callback data:',
+        callbackQuery.data,
+      );
+      await ctx.answerCbQuery('Category ID is missing');
+      return;
+    }
+
+    await ctx.answerCbQuery();
+
+    const vials = await this.vialsService.getVialsByCategory(+categoryId);
+
+    if (!vials.length) {
+      await this.sentLocalizedSupportMessage(ctx, 'no_vials_in_category');
+      return;
+    }
+
+    try {
+      const oldMessageId = this.categorySelectionMessageId.get(user.id);
+      if (oldMessageId) {
+        await ctx.deleteMessage(oldMessageId);
+      }
+    } catch (e) {
+      console.error('Error deleting previous category selection message:', e);
+    }
+
+    await this.sendPaginatedVialSelection(ctx, user, retouchId, +categoryId, 1);
   }
 }
 
