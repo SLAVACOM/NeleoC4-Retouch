@@ -67,15 +67,6 @@ model Product {
   payments Payment[]
 }
 
-model ApiSett {
-  id Int @id @default(autoincrement())
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  name String @unique
-  data String
-}
 
 model Generation {
   id Int @id @default(autoincrement())
@@ -144,18 +135,6 @@ model UsersUsePromocodes {
   promoCodeId Int       @map("promo_code")
   User        User      @relation(fields: [userId], references: [id])
   PromoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
-}
-
-model Retouch {
-  id Int @id @default(autoincrement())
-
-  retouchApiId String @unique
-
-  settingsId Int     @map("settings_id")
-  isDelete   Boolean @default(false)
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 }
 
 model UsersSettings {
