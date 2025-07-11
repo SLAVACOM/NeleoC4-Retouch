@@ -43,7 +43,7 @@ model User {
   payments    Payment[]
 
   pinnedMessages Int[] @default([]) @map("pinned_messages")
-  discountId Int? @map("have_discount")
+  discountId     Int?  @map("have_discount")
 
   usersUsePromocodes UsersUsePromocodes[]
   usersSettings      UsersSettings[]
@@ -66,7 +66,6 @@ model Product {
   IsDelete Boolean   @default(false)
   payments Payment[]
 }
-
 
 model Generation {
   id Int @id @default(autoincrement())
@@ -137,6 +136,27 @@ model UsersUsePromocodes {
   PromoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
 }
 
+model ApiSett {
+  id Int @id @default(autoincrement())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  name String @unique
+  data String
+}
+model Retouch {
+  id Int @id @default(autoincrement())
+
+  retouchApiId String @unique
+
+  settingsId Int     @map("settings_id")
+  isDelete   Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
 model UsersSettings {
   id Int @id @unique @default(autoincrement())
 
@@ -154,12 +174,14 @@ model BaseSettings {
 
 model Discount {
   id                 Int @id @default(autoincrement())
-  discountPercentage Int @default(0) @map("discount_percentage") 
+  discountPercentage Int @default(0) @map("discount_percentage")
 }
+
 model GenerationCount {
-  id                 Int @id @default(autoincrement())
-  count Int @default(0) @map("generation_count") 
+  id    Int @id @default(autoincrement())
+  count Int @default(0) @map("generation_count")
 }
+
 model Settings {
   id Int @id @default(autoincrement())
 
